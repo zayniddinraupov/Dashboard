@@ -173,6 +173,40 @@ header {
     transform: scale(1.1);
 }
 
+/* AVATAR PLACEHOLDER */
+.avatar-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a5298, #1e3c72);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Кнопка Подробнее */
+.toggle-extra-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 10px 0;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.toggle-extra-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+}
+
 /* STATUS COLORS */
 .work {
     border-left: 6px solid #2ecc71

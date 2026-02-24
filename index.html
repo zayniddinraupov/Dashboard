@@ -46,10 +46,13 @@
                 onclick="document.getElementById('globalPhotoInput').click()">📷 Загрузить фото для всех</button>
             <button id="clearPhotoBtn" class="primary" style="display:none;margin-left:10px;background:#e74c3c;"
                 onclick="clearAllPhotos()">🗑 Очистить фото</button>
+            <span id="autoSaveStatus" style="margin-left:10px;color:#27ae60;font-size:12px;display:none;">💾 Автосохранение...</span>
             <button id="syncBtn" class="primary" style="display:none;margin-left:10px;background:#f39c12;"
-                onclick="manualSync()">🔄 Автосинхронизация</button>
-            <button id="refreshBtn" class="primary" style="display:none;margin-left:10px;background:#27ae60;"
-                onclick="toggleAutoRefresh()">🔁 Автообновление: ВКЛ</button>
+                onclick="saveToGoogleSheet(); alert('Сохранено!')">☁️ Сохранить</button>
+            <button class="primary" style="margin-left:10px;background:#27ae60;"
+                onclick="loadFromGoogle()">☁️ Загрузить</button>
+            <button id="clearAllBtn" class="primary" style="display:none;margin-left:10px;background:#e74c3c;"
+                onclick="clearAllData()">🗑 Очистить всё</button>
             <input type="file" id="globalPhotoInput" accept="image/*" style="display:none"
                 onchange="handleGlobalPhotoUpload(event)">
             <input type="file" id="employeePhotoInput" accept="image/*" style="display:none"

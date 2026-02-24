@@ -1,23 +1,104 @@
 let role = ""
-let employees = JSON.parse(localStorage.getItem("employees")) || []
+let employees = []
 let globalPhoto = "https://i.ibb.co/cVn0mgx/photo-2024-12-01-12-00-00.jpg"
+let db = null
 
-// Переменные
-let search = document.getElementById("search") || { value: "" }
+// IndexedDB - более надежное хранилище (50-100MB вместо 5MB)
+const DB_NAME = "HR_Database"
+const DB_VERSION = 1
+const STORE_NAME = "employees"
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION)
+        
+        request.onerror = () => reject("Ошибка открытия БД")
+        
+        request.onsuccess = (event) => {
+            db = event.target.result
+            resolve(db)
+        }
+        
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+                database.createObjectStore(STORE_NAME, { keyPath: "id" })
+            }
+        }
+    })
+}
+
+function loadEmployeesFromDB() {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], "readonly")
+        const store = transaction.objectStore(STORE_NAME)
+        const request = store.getAll()
+        
+        request.onsuccess = () => {
+            employees = request.result || []
+            resolve(employees)
+        }
+        request.onerror = () => reject("Ошибка загрузки")
+    })
+}
+
+function saveEmployeesToDB() {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], "readwrite")
+        const store = transaction.objectStore(STORE_NAME)
+        
+        // Очищаем и перезаписываем
+        store.clear()
+        employees.forEach((emp, index) => {
+            emp.id = index + 1
+            store.add(emp)
+        })
+        
+        transaction.oncomplete = () => resolve()
+        transaction.onerror = () => reject("Ошибка сохранения")
+    })
+}
+
+// Загрузка при старте
+initDB().then(() => {
+    loadEmployeesFromDB().then(() => {
+        renderEmployees()
+    })
+}).catch(err => console.error(err))
+
+// Переменные (будут определены при загрузке)
+let login, password, newName, newPhone, newOperator, newAddress, newDate, newGender, newStatus, search, loginPage, mainPage
 
 // Автологин при загрузке страницы
 window.onload = function() {
-    let savedLogin = localStorage.getItem("savedLogin")
-    let savedPassword = localStorage.getItem("savedPassword")
-    if (savedLogin && savedPassword) {
-        let loginEl = document.getElementById("login")
-        let passwordEl = document.getElementById("password")
-        if (loginEl && passwordEl) {
-            loginEl.value = savedLogin
-            passwordEl.value = savedPassword
+    // Определяем переменные после загрузки DOM
+    login = document.getElementById("login")
+    password = document.getElementById("password")
+    newName = document.getElementById("newName")
+    newPhone = document.getElementById("newPhone")
+    newOperator = document.getElementById("newOperator")
+    newAddress = document.getElementById("newAddress")
+    newDate = document.getElementById("newDate")
+    newGender = document.getElementById("newGender")
+    newStatus = document.getElementById("newStatus")
+    search = document.getElementById("search")
+    loginPage = document.getElementById("loginPage")
+    mainPage = document.getElementById("mainPage")
+    
+    // Инициализируем IndexedDB и загружаем данные
+    initDB().then(() => {
+        loadEmployeesFromDB().then(() => {
+            renderEmployees()
+        })
+        
+        let savedLogin = localStorage.getItem("savedLogin")
+        let savedPassword = localStorage.getItem("savedPassword")
+        if (savedLogin && savedPassword && login && password) {
+            login.value = savedLogin
+            password.value = savedPassword
             loginUser()
         }
-    }
+    })
 }
 
 // Google Таблица настройка
@@ -28,16 +109,16 @@ function autoSync() {
     saveToGoogleSheet()
 }
 
-// Сохранение в Google Таблицу (автоматическое)
+// Сохранение в Google Таблицу
 function saveToGoogleSheet() {
     let data = JSON.stringify({ employees: employees, globalPhoto: globalPhoto })
     let url = googleScriptUrl + "?action=set&data=" + encodeURIComponent(data)
     fetch(url, { mode: "no-cors" })
         .then(() => {
-            // Успешно сохранено
+            console.log("Сохранено в Google Таблицу")
         })
         .catch(() => {
-            // Ошибка сохранения
+            console.log("Ошибка сохранения")
         })
 }
 
@@ -50,13 +131,13 @@ function loadFromGoogleSheet() {
                 let data = JSON.parse(result)
                 if (data && data.employees && data.employees.length > 0) {
                     employees = data.employees
-                    localStorage.setItem("employees", JSON.stringify(employees))
+                    saveEmployeesToDB()
+                    renderEmployees()
                 }
                 if (data && data.globalPhoto) {
                     globalPhoto = data.globalPhoto
                     localStorage.setItem("globalPhoto", globalPhoto)
                 }
-                renderEmployees()
             } catch(e) {
                 console.log("Ошибка загрузки из облака")
             }
@@ -64,6 +145,23 @@ function loadFromGoogleSheet() {
         .catch(err => {
             console.log("Нет подключения к облаку")
         })
+}
+
+// Кнопка: Сохранить в Google Таблицу
+function syncToGoogle() {
+    saveToGoogleSheet()
+    saveToGoogleSheet()
+    setTimeout(() => {
+        alert("✅ Данные сохранены в Google Таблицу!")
+    }, 1000)
+}
+
+// Кнопка: Загрузить из Google Таблицы
+function loadFromGoogle() {
+    loadFromGoogleSheet()
+    setTimeout(() => {
+        alert(`✅ Загружено ${employees.length} сотрудников из Google Таблицы!`)
+    }, 1500)
 }
 
 // Удаление тестовых сотрудников при первом запуске
@@ -74,112 +172,111 @@ function clearTestEmployees() {
         alert("Тестовые сотрудники удалены!")
         renderEmployees()
     }
-    // Установка фото для всех сотрудников если не установлено
-    if (globalPhoto) {
-        employees.forEach(emp => {
-            if (!emp.photo || emp.photo === "") {
-                emp.photo = globalPhoto
-            }
-        })
-        saveData()
+}
+
+function clearAllData() {
+    if (!confirm("Вы уверены? Все сотрудники будут удалены!")) return
+    
+    const transaction = db.transaction([STORE_NAME], "readwrite")
+    const store = transaction.objectStore(STORE_NAME)
+    store.clear()
+    
+    employees = []
+    renderEmployees()
+    alert("Все данные очищены!")
+}
+
+let autoSaveTimeout = null
+
+function showAutoSaveStatus(show) {
+    let statusEl = document.getElementById("autoSaveStatus")
+    if (statusEl) {
+        statusEl.style.display = show ? "inline" : "none"
+        if (show) {
+            statusEl.textContent = "💾 Сохранение..."
+            setTimeout(() => { statusEl.textContent = "✅ Сохранено" }, 1500)
+            setTimeout(() => { statusEl.style.display = "none" }, 3000)
+        }
     }
 }
 
 function saveData() {
-    try {
-        localStorage.setItem("employees", JSON.stringify(employees))
-        // Автосинхронизация с Google Таблицей
-        saveToGoogleSheet()
-    } catch (e) {
-        alert("Ошибка: Превышен лимит памяти! Удалите фото у сотрудников или используйте URL вместо загрузки с компьютера.")
-    }
+    // Сохраняем в IndexedDB (лимит 50-100MB)
+    saveEmployeesToDB().then(() => {
+        // Также сохраняем глобальное фото в localStorage (оно маленькое)
+        localStorage.setItem("globalPhoto", globalPhoto)
+        
+        // Показываем статус
+        showAutoSaveStatus(true)
+        
+        // Автосинхронизация с Google Таблицей с задержкой 2 секунды
+        if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
+        autoSaveTimeout = setTimeout(() => {
+            saveToGoogleSheet()
+            console.log("Автосохранение в Google Таблицу выполнено")
+        }, 2000)
+    }).catch(err => {
+        alert("Ошибка сохранения: " + err)
+    })
 }
 
-function autoRefresh() {
-    let stored = JSON.parse(localStorage.getItem("employees")) || []
-    if (JSON.stringify(stored) !== JSON.stringify(employees)) {
-        employees = stored
-        renderEmployees()
-    }
-}
-setInterval(autoRefresh, 3000)
+// Сохранение при закрытии вкладки
+window.addEventListener("beforeunload", function() {
+    if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
+    saveToGoogleSheet()
+})
 
-let autoRefreshEnabled = true
-let autoRefreshInterval
+// Проверка использования памяти IndexedDB
+function getDataSize() {
+    let data = JSON.stringify({ employees: employees, globalPhoto: globalPhoto })
+    return new Blob([data]).size
+}
+
+function showStorageInfo() {
+    let size = getDataSize()
+    let usedMB = (size / 1024 / 1024).toFixed(2)
+    let limitMB = 50 // Примерный лимит IndexedDB
+    alert(`📊 Использование памяти:\n\nИспользовано: ${usedMB} MB\nПримерный лимит: ~${limitMB} MB\nСотрудников: ${employees.length}`)
+}
 
 function loginUser() {
+    // Проверяем, что элементы найдены
+    if (!login || !password) {
+        alert("Ошибка: страница не загружена. Обновите страницу.")
+        return
+    }
+    
     if (login.value === "Zayniddin" && password.value === "3020") { role = "admin" }
     else if (login.value === "supervisor" && password.value === "12345") { role = "supervisor" }
-    else { alert("Ошибка"); return }
+    else { alert("Ошибка: неверный логин или пароль"); return }
     
-    // Сохраняем логин для автообновления
+    // Сохраняем логин
     localStorage.setItem("savedLogin", login.value)
     localStorage.setItem("savedPassword", password.value)
     
-    // Автозагрузка из Google Таблицы при входе
-    loadFromGoogleSheet()
+    // Загружаем глобальное фото
+    let savedPhoto = localStorage.getItem("globalPhoto")
+    if (savedPhoto) globalPhoto = savedPhoto
     
-    loginPage.classList.add("hidden")
-    mainPage.classList.remove("hidden")
-    if (role === "admin") {
-        document.getElementById("addBtn").style.display = "inline-block"
-        document.getElementById("globalPhotoBtn").style.display = "inline-block"
-        document.getElementById("clearPhotoBtn").style.display = "inline-block"
-        document.getElementById("syncBtn").style.display = "inline-block"
-        document.getElementById("refreshBtn").style.display = "inline-block"
-        document.querySelector(".export").style.display = "inline-block"
-        document.getElementById("userRole").textContent = " | Admin"
-        localStorage.setItem("globalPhoto", globalPhoto)
-        clearTestEmployees()
-    } else {
-        document.querySelector(".export").style.display = "none"
-        document.getElementById("userRole").textContent = " | Supervazer"
-        document.getElementById("refreshBtn").style.display = "inline-block"
-    }
-    renderEmployees()
-    
-    // Включаем автообновление
-    startAutoRefresh()
-}
-
-function autoSyncToCloud() {
-    saveToGoogleSheet()
-}
-
-// Ручная синхронизация
-function manualSync() {
-    loadFromGoogleSheet()
-    saveToGoogleSheet()
-    setTimeout(() => {
-        loadFromGoogleSheet()
-    }, 1000)
-    alert("Синхронизация выполнена!")
-}
-
-// Автообновление страницы
-function toggleAutoRefresh() {
-    autoRefreshEnabled = !autoRefreshEnabled
-    let btn = document.getElementById("refreshBtn")
-    if (autoRefreshEnabled) {
-        btn.textContent = "🔁 Автообновление: ВКЛ"
-        startAutoRefresh()
-    } else {
-        btn.textContent = "🔁 Автообновление: ВЫКЛ"
-        stopAutoRefresh()
-    }
-}
-
-function startAutoRefresh() {
-    stopAutoRefresh()
-    autoRefreshInterval = setInterval(() => {
-        loadFromGoogleSheet()
-    }, 10000) // каждые 10 секунд
-}
-
-function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval)
-    }
+    // Загружаем сотрудников из IndexedDB
+    loadEmployeesFromDB().then(() => {
+        loginPage.classList.add("hidden")
+        mainPage.classList.remove("hidden")
+        if (role === "admin") {
+            document.getElementById("addBtn").style.display = "inline-block"
+            document.getElementById("globalPhotoBtn").style.display = "inline-block"
+            document.getElementById("clearPhotoBtn").style.display = "inline-block"
+            document.getElementById("syncBtn").style.display = "inline-block"
+            document.getElementById("clearAllBtn").style.display = "inline-block"
+            document.querySelector(".export").style.display = "inline-block"
+            document.getElementById("userRole").textContent = " | Admin"
+            clearTestEmployees()
+        } else {
+            document.querySelector(".export").style.display = "none"
+            document.getElementById("userRole").textContent = " | Supervazer"
+        }
+        renderEmployees()
+    })
 }
 
 function toggleAdd() {
@@ -287,15 +384,23 @@ function clearAllPhotos() {
 }
 
 function logout() {
+    // Сохраняем данные перед выходом
+    saveToGoogleSheet()
+    
+    // Удаляем сохранённый логин
     localStorage.removeItem("savedLogin")
     localStorage.removeItem("savedPassword")
-    stopAutoRefresh()
+    
+    // Перезагружаем страницу
     location.reload()
 }
 
 function addEmployee() {
     if (role !== "admin") { alert("Нет доступа"); return }
-    let photoUrl = globalPhoto || "/images/default.jpg"
+    
+    // Не добавляем фото автоматически - только если явно установлено
+    // Это экономит место для 50+ сотрудников
+    let photoUrl = "" // Пустое фото по умолчанию
     let status = newStatus.value
     let dateFrom = document.getElementById("newDateFrom").value
     let dateTo = document.getElementById("newDateTo").value
@@ -446,10 +551,14 @@ function renderEmployees() {
             let div = document.createElement("div")
             div.className = "employee " + getClass(emp.status)
             let dateRangeHtml = emp.dateRange ? `<p style="color:#e74c3c;font-weight:bold;margin:5px 0;">📅 Период: ${emp.dateRange}</p>` : ""
+            // Показываем заглушку если фото пустое
+            let photoHtml = emp.photo && emp.photo.length > 10 
+                ? `<img src="${emp.photo}" onerror="this.style.display='none'">` 
+                : `<div class="avatar-placeholder">${emp.name.charAt(0).toUpperCase()}</div>`
             div.innerHTML = `
 <div class="employee-header">
 <div class="employee-info">
-<img src="${emp.photo}">
+${photoHtml}
 <div>
 <h3>${emp.name}</h3>
 ${role === "admin" ? `
@@ -476,7 +585,7 @@ ${role === "admin" ? `
 </div>
 </div>
 <p><b class="editable" onclick="editField(${i},'phone')">Телефон:</b> ${emp.phone}</p>
-<p><b class="toggle-extra" onclick="toggleEmployeeExtra(${i})" style="cursor:pointer;color:#2a5298;font-weight:bold;">📋 Показать дополнительно</b></p>
+<button class="toggle-extra-btn" onclick="toggleEmployeeExtra(${i})">📋 Подробнее</button>
 <div id="extra-${i}" style="display:none">
 <p><b class="editable" onclick="editField(${i},'operator')">Оператор:</b> ${emp.operator || "Нет"}</p>
 <p><b class="editable" onclick="editField(${i},'address')">Адрес:</b> ${emp.address || "Нет"}</p>
@@ -594,14 +703,14 @@ function importData() {
                 let data = JSON.parse(evt.target.result)
                 if (data.employees) {
                     employees = data.employees
-                    saveData()
+                    saveEmployeesToDB() // Сохраняем в IndexedDB
                 }
                 if (data.globalPhoto) {
                     globalPhoto = data.globalPhoto
                     localStorage.setItem("globalPhoto", globalPhoto)
                 }
                 renderEmployees()
-                alert("Данные загружены!")
+                alert("Данные загружены в IndexedDB!")
             } catch(err) {
                 alert("Ошибка: " + err.message)
             }
