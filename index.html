@@ -1,87 +1,116 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Самарқанд | Dashboard"</title>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="stayl.css">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Самарқанд | Dashboard"</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="stayl.css">
 </head>
+
 <body>
 
-<!-- LOGIN -->
-<div id="loginPage" class="login">
-<div class="login-box">
-<h2>Login</h2>
-<input id="login" placeholder="Логин">
-<input id="password" type="password" placeholder="Пароль">
-<button class="primary" onclick="loginUser()">Войти</button>
-</div>
-</div>
+    <!-- LOGIN -->
+    <div id="loginPage" class="login">
+        <div class="login-box">
+            <h2>Login</h2>
+            <input id="login" placeholder="Логин">
+            <input id="password" type="password" placeholder="Пароль">
+            <button class="primary" onclick="loginUser()">Войти</button>
+        </div>
+    </div>
 
-<!-- MAIN -->
-<div id="mainPage" class="hidden">
+    <!-- MAIN -->
+    <div id="mainPage" class="hidden">
 
-<header>
-<h2>Dashboard</h2>
-<div>
-<button class="export" style="display:none" onclick="exportExcel()">Экспорт</button>
-<button class="logout" onclick="logout()">Выйти</button>
-</div>
-</header>
+        <header>
+            <h2>Dashboard <span id="userRole" style="font-size:14px;color:#666;font-weight:normal;"></span></h2>
+            <div>
+                <span style="margin-right:15px;color:#666;font-size:12px;">Разработчик: sam_veb_razrabaotclik</span>
+                <button class="export" style="display:none" onclick="exportExcel()">Экспорт</button>
+                <button class="logout" onclick="logout()">Выйти</button>
+            </div>
+        </header>
 
-<div class="container">
+        <div class="container">
 
-<div class="stats" id="stats"></div>
+            <div class="stats" id="stats"></div>
 
-<button id="addBtn" class="primary" style="display:none" onclick="toggleAdd()">+ Добавить сотрудника</button>
-<button id="globalPhotoBtn" class="primary" style="display:none;margin-left:10px;background:#3498db;" onclick="document.getElementById('globalPhotoInput').click()">📷 Загрузить фото для всех</button>
-<input type="file" id="globalPhotoInput" accept="image/*" style="display:none" onchange="handleGlobalPhotoUpload(event)">
-<input type="file" id="employeePhotoInput" accept="image/*" style="display:none" onchange="handleEmployeePhotoUpload(event)">
+            <button id="addBtn" class="primary" style="display:none" onclick="toggleAdd()">+ Добавить
+                сотрудника</button>
+            <button id="globalPhotoBtn" class="primary" style="display:none;margin-left:10px;background:#3498db;"
+                onclick="document.getElementById('globalPhotoInput').click()">📷 Загрузить фото для всех</button>
+            <button id="clearPhotoBtn" class="primary" style="display:none;margin-left:10px;background:#e74c3c;"
+                onclick="clearAllPhotos()">🗑 Очистить фото</button>
+            <button id="syncBtn" class="primary" style="display:none;margin-left:10px;background:#f39c12;"
+                onclick="manualSync()">🔄 Автосинхронизация</button>
+            <button id="refreshBtn" class="primary" style="display:none;margin-left:10px;background:#27ae60;"
+                onclick="toggleAutoRefresh()">🔁 Автообновление: ВКЛ</button>
+            <input type="file" id="globalPhotoInput" accept="image/*" style="display:none"
+                onchange="handleGlobalPhotoUpload(event)">
+            <input type="file" id="employeePhotoInput" accept="image/*" style="display:none"
+                onchange="handleEmployeePhotoUpload(event)">
 
-<div id="addSection" class="hidden">
-<h3 style="margin:20px 0">Добавить сотрудника</h3>
-<input id="newName" placeholder="ФИО">
-<input id="newPhone" placeholder="Телефон">
-<input id="newOperator" placeholder="Номер оператора">
-<input id="newAddress" placeholder="Адрес">
-<input id="newDate" placeholder="Дата приема (01.01.2024)">
-<input id="newPhoto" placeholder="URL фото (необязательно)">
-<select id="newGender">
-<option value="male">Мужской</option>
-<option value="female">Женский</option>
-</select>
-<select id="newStatus" onchange="toggleDateRange()">
-<option>На работе</option>
-<option>Учёба</option>
-<option>Отпуск</option>
-<option>Больничный</option>
-<option>Без содержания</option>
-<option>Увольнение</option>
-</select>
-<div id="dateRangeFields" style="display:none; margin:10px 0; padding:10px; background:#f8f9fa; border-radius:5px;">
-<label>Период: </label>
-<input id="newDateFrom" placeholder="С (01.01.2024)" style="width:150px">
-<input id="newDateTo" placeholder="По (31.01.2024)" style="width:150px">
-</div>
-<div id="firedDateField" style="display:none; margin:10px 0; padding:10px; background:#f8f9fa; border-radius:5px;">
-<label>Дата увольнения: </label>
-<input id="newFiredDate" placeholder="Дата (01.01.2024)" style="width:150px">
-</div>
-<button class="primary" onclick="addEmployee()">Добавить</button>
-</div>
+            <div id="addSection" class="hidden">
+                <h3 style="margin:20px 0">Добавить сотрудника</h3>
+                <input id="newName" placeholder="ФИО">
+                <input id="newPhone" placeholder="Телефон">
+                <select id="newGender">
+                    <option value="male">Мужской</option>
+                    <option value="female">Женский</option>
+                </select>
+                <select id="newStatus" onchange="toggleDateRange()">
+                    <option>На работе</option>
+                    <option>Учёба</option>
+                    <option>Отпуск</option>
+                    <option>Больничный</option>
+                    <option>Без содержания</option>
+                    <option>Декрет</option>
+                    <option>Армия</option>
+                    <option>Увольнение</option>
+                </select>
+                <button type="button" onclick="toggleExtraFields()" style="background:#9b59b6;color:white;margin:10px 0;">📋 Дополнительные поля</button>
+                <div id="extraFields" style="display:none">
+                    <input id="newOperator" placeholder="Номер оператора">
+                    <input id="newAddress" placeholder="Адрес">
+                    <input id="newDate" placeholder="Дата приема (01.01.2024)">
+                    <input id="newBirthday" placeholder="Дата рождения (01.01.2000)">
+                    <input id="newPhoto" placeholder="URL фото (необязательно)">
+                </div>
+                <div id="dateRangeFields"
+                    style="display:none; margin:10px 0; padding:10px; background:#f8f9fa; border-radius:5px;">
+                    <label>Период: </label>
+                    <input id="newDateFrom" placeholder="С (01.01.2024)" style="width:150px">
+                    <input id="newDateTo" placeholder="По (31.01.2024)" style="width:150px">
+                </div>
+                <div id="firedDateField"
+                    style="display:none; margin:10px 0; padding:10px; background:#f8f9fa; border-radius:5px;">
+                    <label>Дата увольнения: </label>
+                    <input id="newFiredDate" placeholder="Дата (01.01.2024)" style="width:150px">
+                </div>
+                <button class="primary" onclick="addEmployee()">Добавить</button>
+            </div>
 
-<hr style="margin:30px 0">
+            <hr style="margin:30px 0">
 
-<input id="search" placeholder="Поиск..." onkeyup="renderEmployees()">
+            <input id="search" placeholder="Поиск..." onkeyup="renderEmployees()">
+            <select id="genderFilter" onchange="renderEmployees()" style="margin-left:10px;padding:8px;border-radius:5px;border:1px solid #ddd;">
+                <option value="">Все полы</option>
+                <option value="male">👨 Мужской</option>
+                <option value="female">👩 Женский</option>
+            </select>
 
-<div id="employeeList"></div>
+            <div id="employeeList"></div>
 
-</div>
-</div>
+        </div>
+    </div>
 
-<script src="script.js"></script>
+    <script src="script.js"></script>
 
 </body>
+
 </html>
