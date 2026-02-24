@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Самарқанд | Dashboard"</title>
+    <title>Самарканд | HR Dashboard</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <link rel="stylesheet" href="stayl.css">
@@ -38,19 +39,39 @@
 
         <div class="container">
 
+            <!-- Уведомления -->
+            <div id="notifications"></div>
+
             <div class="stats" id="stats"></div>
+
+            <button id="chartsBtn" class="primary" style="display:none;margin-bottom:20px;" onclick="toggleCharts()">📊 Статистика</button>
+
+            <!-- Графики -->
+            <div id="chartsSection" style="margin: 30px 0; display: none; overflow-x: auto; padding-bottom: 10px;">
+                <h3 style="color: #667eea;">📊 Статистика</h3>
+                <div style="display: flex; gap: 30px; flex-wrap: nowrap; min-width: min-content;">
+                    <div style="flex: 1; min-width: 300px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+                        <h4 style="margin-top: 0; text-align: center;">По статусам</h4>
+                        <canvas id="statusChart" height="200"></canvas>
+                    </div>
+                    <div style="flex: 1; min-width: 300px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+                        <h4 style="margin-top: 0; text-align: center;">По полу</h4>
+                        <canvas id="genderChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
 
             <button id="addBtn" class="primary" style="display:none" onclick="toggleAdd()">+ Добавить
                 сотрудника</button>
+            <button class="primary template-btn" style="display:none;margin-left:10px;" id="templateBtn"
+                onclick="showTemplates()">📋 Шаблоны</button>
             <button id="globalPhotoBtn" class="primary" style="display:none;margin-left:10px;background:#3498db;"
                 onclick="document.getElementById('globalPhotoInput').click()">📷 Загрузить фото для всех</button>
-            <button id="clearPhotoBtn" class="primary" style="display:none;margin-left:10px;background:#e74c3c;"
-                onclick="clearAllPhotos()">🗑 Очистить фото</button>
             <span id="autoSaveStatus" style="margin-left:10px;color:#27ae60;font-size:12px;display:none;">💾 Автосохранение...</span>
             <button id="syncBtn" class="primary" style="display:none;margin-left:10px;background:#f39c12;"
-                onclick="saveToGoogleSheet(); alert('Сохранено!')">☁️ Сохранить</button>
+                onclick="saveToGoogleSheet()">☁️ Сохранить</button>
             <button class="primary" style="margin-left:10px;background:#27ae60;"
-                onclick="loadFromGoogle()">☁️ Загрузить</button>
+                onclick="loadFromCloud()">☁️ Загрузить</button>
             <button id="clearAllBtn" class="primary" style="display:none;margin-left:10px;background:#e74c3c;"
                 onclick="clearAllData()">🗑 Очистить всё</button>
             <input type="file" id="globalPhotoInput" accept="image/*" style="display:none"
@@ -61,7 +82,7 @@
             <div id="addSection" class="hidden">
                 <h3 style="margin:20px 0">Добавить сотрудника</h3>
                 <input id="newName" placeholder="ФИО">
-                <input id="newPhone" placeholder="Телефон">
+                <input id="newPhone" placeholder="+998">
                 <select id="newGender">
                     <option value="male">Мужской</option>
                     <option value="female">Женский</option>

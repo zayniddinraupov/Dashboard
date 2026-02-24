@@ -36,6 +36,8 @@ function loadEmployeesFromDB() {
         
         request.onsuccess = () => {
             employees = request.result || []
+            // Сортировка по алфавиту
+            employees.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
             resolve(employees)
         }
         request.onerror = () => reject("Ошибка загрузки")
@@ -81,6 +83,7 @@ window.onload = function() {
     newDate = document.getElementById("newDate")
     newGender = document.getElementById("newGender")
     newStatus = document.getElementById("newStatus")
+    newPhoto = document.getElementById("newPhoto")
     search = document.getElementById("search")
     loginPage = document.getElementById("loginPage")
     mainPage = document.getElementById("mainPage")
@@ -101,67 +104,113 @@ window.onload = function() {
     })
 }
 
-// Google Таблица настройка
-let googleScriptUrl = "https://script.google.com/macros/s/AKfycbzEFR-rMN0g--LEIPQxcMFGJUba0josu_e2xsu6wYyVlhLrT9Xq59fL5_9krJLGIzq6lQ/exec"
+// Google Таблица настройка (резервный)
+// let googleScriptUrl = "https://script.google.com/macros/s/AKfycbwhd1fLT75cHlR5omEO9dNfulFuQO3T10zvEeVrg-_QOizu-98POZo9sLtxXNMkTry7zg/exec"
+
+// JSONBin.io - работает с CORS
+let jsonBinApiKey = "$2a$10$djcbr7IRhAv9dzcz.Wjb8OjIZoxkUvtZwmw1Z0TkVLG3821AFviRu"
+let jsonBinId = "699e07e3ae596e708f465718"
 
 // Автосинхронизация при каждом изменении
 function autoSync() {
     saveToGoogleSheet()
 }
 
-// Сохранение в Google Таблицу
+// Сохранение в облако (JSONBin.io)
+function saveToCloud() {
+    if (employees.length === 0) return
+    
+    let data = { employees: employees, globalPhoto: globalPhoto }
+    let jsonStr = JSON.stringify(data)
+    
+    showAutoSaveStatus(true)
+    
+    // Если JSONBin настроен - используем его
+    if (isJsonBinConfigured()) {
+        fetch("https://api.jsonbin.io/v3/b/" + jsonBinId, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Master-Key": jsonBinApiKey
+            },
+            body: jsonStr
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("HTTP " + response.status)
+            console.log("✅ Сохранено в JSONBin")
+        })
+        .catch(err => console.log("❌ Ошибка сохранения в JSONBin:", err.message))
+    } else {
+        // Сохраняем только локально
+        console.log("ℹ️ JSONBin не настроен. Данные сохранены локально в браузере.")
+    }
+}
+
+// Загрузка из облака
+function loadFromCloud() {
+    // Если JSONBin настроен - загружаем
+    if (isJsonBinConfigured()) {
+        fetch("https://api.jsonbin.io/v3/b/" + jsonBinId + "/latest", {
+            method: "GET",
+            headers: {
+                "X-Master-Key": jsonBinApiKey
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("HTTP " + response.status)
+            return response.json()
+        })
+        .then(data => {
+            if (data.record && data.record.employees) {
+                employees = data.record.employees
+                saveEmployeesToDB()
+                renderEmployees()
+                console.log("✅ Загружено из JSONBin: " + employees.length + " сотрудников")
+            }
+        })
+        .catch(err => console.log("❌ Ошибка загрузки из JSONBin:", err.message))
+    } else {
+        alert("JSONBin не настроен! Нажмите 'Настроить JSONBin' для настройки облачного хранилища.")
+    }
+}
+
+// Функция проверки настроек JSONBin
+function isJsonBinConfigured() {
+    return jsonBinApiKey && jsonBinId && 
+           jsonBinApiKey.trim() !== "" && 
+           jsonBinId.trim() !== "" &&
+           jsonBinApiKey !== "YOUR_API_KEY"
+}
+
+// Загрузка настроек JSONBin при старте
+function loadJsonBinSettings() {
+    let savedApiKey = localStorage.getItem("jsonBinApiKey")
+    let savedBinId = localStorage.getItem("jsonBinId")
+    
+    // Если есть сохранённые настройки - используем их
+    if (savedApiKey && savedBinId) {
+        jsonBinApiKey = savedApiKey
+        jsonBinId = savedBinId
+    } else {
+        // Иначе сохраняем текущие (по умолчанию)
+        localStorage.setItem("jsonBinApiKey", jsonBinApiKey)
+        localStorage.setItem("jsonBinId", jsonBinId)
+    }
+    
+    console.log("✅ JSONBin настроен: " + jsonBinId)
+}
+
+// Вызываем при старте
+loadJsonBinSettings()
+
+// Сохранение в Google Таблицу (оставлено для совместимости)
 function saveToGoogleSheet() {
-    let data = JSON.stringify({ employees: employees, globalPhoto: globalPhoto })
-    let url = googleScriptUrl + "?action=set&data=" + encodeURIComponent(data)
-    fetch(url, { mode: "no-cors" })
-        .then(() => {
-            console.log("Сохранено в Google Таблицу")
-        })
-        .catch(() => {
-            console.log("Ошибка сохранения")
-        })
+    saveToCloud()
 }
 
 // Загрузка из Google Таблицы
 function loadFromGoogleSheet() {
-    fetch(googleScriptUrl + "?action=get")
-        .then(response => response.text())
-        .then(result => {
-            try {
-                let data = JSON.parse(result)
-                if (data && data.employees && data.employees.length > 0) {
-                    employees = data.employees
-                    saveEmployeesToDB()
-                    renderEmployees()
-                }
-                if (data && data.globalPhoto) {
-                    globalPhoto = data.globalPhoto
-                    localStorage.setItem("globalPhoto", globalPhoto)
-                }
-            } catch(e) {
-                console.log("Ошибка загрузки из облака")
-            }
-        })
-        .catch(err => {
-            console.log("Нет подключения к облаку")
-        })
-}
-
-// Кнопка: Сохранить в Google Таблицу
-function syncToGoogle() {
-    saveToGoogleSheet()
-    saveToGoogleSheet()
-    setTimeout(() => {
-        alert("✅ Данные сохранены в Google Таблицу!")
-    }, 1000)
-}
-
-// Кнопка: Загрузить из Google Таблицы
-function loadFromGoogle() {
-    loadFromGoogleSheet()
-    setTimeout(() => {
-        alert(`✅ Загружено ${employees.length} сотрудников из Google Таблицы!`)
-    }, 1500)
+    loadFromCloud()
 }
 
 // Удаление тестовых сотрудников при первом запуске
@@ -209,11 +258,11 @@ function saveData() {
         // Показываем статус
         showAutoSaveStatus(true)
         
-        // Автосинхронизация с Google Таблицей с задержкой 2 секунды
+        // Автосинхронизация в облако с задержкой 2 секунды
         if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
         autoSaveTimeout = setTimeout(() => {
-            saveToGoogleSheet()
-            console.log("Автосохранение в Google Таблицу выполнено")
+            saveToCloud()
+            console.log("Автосохранение в облако выполнено")
         }, 2000)
     }).catch(err => {
         alert("Ошибка сохранения: " + err)
@@ -225,7 +274,7 @@ window.addEventListener("beforeunload", function() {
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
     saveToGoogleSheet()
 })
-
+    
 // Проверка использования памяти IndexedDB
 function getDataSize() {
     let data = JSON.stringify({ employees: employees, globalPhoto: globalPhoto })
@@ -264,12 +313,15 @@ function loginUser() {
         mainPage.classList.remove("hidden")
         if (role === "admin") {
             document.getElementById("addBtn").style.display = "inline-block"
+            document.getElementById("templateBtn").style.display = "inline-block"
+            document.getElementById("chartsBtn").style.display = "inline-block"
             document.getElementById("globalPhotoBtn").style.display = "inline-block"
-            document.getElementById("clearPhotoBtn").style.display = "inline-block"
             document.getElementById("syncBtn").style.display = "inline-block"
             document.getElementById("clearAllBtn").style.display = "inline-block"
             document.querySelector(".export").style.display = "inline-block"
             document.getElementById("userRole").textContent = " | Admin"
+        } else if (role === "supervisor") {
+            document.getElementById("userRole").textContent = " | Supervazer"
             clearTestEmployees()
         } else {
             document.querySelector(".export").style.display = "none"
@@ -370,19 +422,6 @@ function handleGlobalPhotoUpload(event) {
     event.target.value = ""
 }
 
-function clearAllPhotos() {
-    if (role !== "admin") { alert("Нет доступа"); return }
-    if (!confirm("Удалить все фото сотрудников? Это освободит память.")) return
-    globalPhoto = ""
-    localStorage.setItem("globalPhoto", "")
-    employees.forEach(emp => {
-        emp.photo = ""
-    })
-    saveData()
-    renderEmployees()
-    alert("Все фото удалены!")
-}
-
 function logout() {
     // Сохраняем данные перед выходом
     saveToGoogleSheet()
@@ -397,6 +436,12 @@ function logout() {
 
 function addEmployee() {
     if (role !== "admin") { alert("Нет доступа"); return }
+    
+    // Добавляем +998 если номер не начинается с него
+    let phoneValue = newPhone.value.trim()
+    if (phoneValue && !phoneValue.startsWith("+998") && !phoneValue.startsWith("998")) {
+        phoneValue = "+998" + phoneValue.replace(/^0+/, '')
+    }
     
     // Не добавляем фото автоматически - только если явно установлено
     // Это экономит место для 50+ сотрудников
@@ -413,7 +458,7 @@ function addEmployee() {
     }
     employees.push({
         name: newName.value,
-        phone: newPhone.value,
+        phone: phoneValue,
         operator: newOperator.value,
         address: newAddress.value,
         date: newDate.value,
@@ -423,6 +468,10 @@ function addEmployee() {
         gender: newGender.value,
         dateRange: dateRange
     })
+    
+    // Сортировка по алфавиту по имени
+    employees.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    
     saveData()
     renderEmployees()
     newName.value = ""
@@ -430,7 +479,7 @@ function addEmployee() {
     newOperator.value = ""
     newAddress.value = ""
     newDate.value = ""
-    newPhoto.value = ""
+    if (newPhoto) newPhoto.value = ""
     document.getElementById("newBirthday").value = ""
     document.getElementById("newDateFrom").value = ""
     document.getElementById("newDateTo").value = ""
@@ -540,10 +589,11 @@ function editEmployee(i) {
 
 function renderEmployees() {
     let list = document.getElementById("employeeList")
-    let genderFilter = document.getElementById("genderFilter").value
+    let genderFilter = document.getElementById("genderFilter")?.value || ""
+    let searchQuery = search?.value?.toLowerCase() || ""
     list.innerHTML = ""
     employees.filter(e => {
-        let matchName = e.name.toLowerCase().includes(search.value.toLowerCase())
+        let matchName = e.name.toLowerCase().includes(searchQuery)
         let matchGender = !genderFilter || e.gender === genderFilter
         return matchName && matchGender
     })
@@ -621,15 +671,15 @@ function updateStats() {
         if (e.gender === "female") female++
     })
     document.getElementById("stats").innerHTML = `
-<div class="stat-box">Всего: ${employees.length}</div>
-<div class="stat-box">Мужчин: ${male}</div>
-<div class="stat-box">Женщин: ${female}</div>
-<div class="stat-box">На работе: ${stats["На работе"]}</div>
-<div class="stat-box">Отпуск: ${stats["Отпуск"]}</div>
-<div class="stat-box">Больничный: ${stats["Больничный"]}</div>
-<div class="stat-box">Без содержания: ${stats["Без содержания"]}</div>
-<div class="stat-box">Декрет: ${stats["Декрет"]}</div>
-<div class="stat-box">Армия: ${stats["Армия"]}</div>
+<div class="stat-box">Всего<span>${employees.length}</span></div>
+<div class="stat-box">Мужчин<span>${male}</span></div>
+<div class="stat-box">Женщин<span>${female}</span></div>
+<div class="stat-box">На работе<span>${stats["На работе"]}</span></div>
+<div class="stat-box">Отпуск<span>${stats["Отпуск"]}</span></div>
+<div class="stat-box">Больничный<span>${stats["Больничный"]}</span></div>
+<div class="stat-box">Без содержания<span>${stats["Без содержания"]}</span></div>
+<div class="stat-box">Декрет<span>${stats["Декрет"]}</span></div>
+<div class="stat-box">Армия<span>${stats["Армия"]}</span></div>
 `
 }
 
@@ -666,72 +716,176 @@ function performExport() {
     }
 }
 
-// Сброс данных (раскомментируйте для сброса)
-// localStorage.removeItem("employees"); location.reload();
+// ============= НОВЫЕ ФУНКЦИИ =============
 
-// Синхронизация - Экспорт/Импорт JSON
-function showSyncSettings() {
-    let choice = prompt("Синхронизация:\n1 - Экспорт (скачать JSON файл)\n2 - Импорт (загрузить JSON файл)\n3 - Загрузить из Google Таблицы\n4 - Сохранить в Google Таблицу\n\nВведите цифру:")
-    if (choice === "1") exportData()
-    else if (choice === "2") importData()
-    else if (choice === "3") loadFromGoogleSheet()
-    else if (choice === "4") saveToGoogleSheet()
+// Графики
+let statusChart = null
+let genderChart = null
+let chartsVisible = false
+
+function toggleCharts() {
+    let section = document.getElementById("chartsSection")
+    chartsVisible = !chartsVisible
+    section.style.display = chartsVisible ? "block" : "none"
+    if (chartsVisible && employees.length > 0) {
+        renderCharts()
+    }
 }
 
-function exportData() {
-    let data = { employees: employees, globalPhoto: globalPhoto }
-    let blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-    let url = URL.createObjectURL(blob)
-    let a = document.createElement("a")
-    a.href = url
-    a.download = "hr_backup_" + new Date().toISOString().slice(0, 10) + ".json"
-    a.click()
-    URL.revokeObjectURL(url)
-    alert("Данные сохранены в файл!")
+function renderCharts() {
+    if (employees.length === 0) return
+    
+    // Статистика по статусам
+    let statusStats = {}
+    employees.forEach(emp => {
+        let status = emp.status || "На работе"
+        statusStats[status] = (statusStats[status] || 0) + 1
+    })
+    
+    // Статистика по полу
+    let male = employees.filter(e => e.gender === "male").length
+    let female = employees.filter(e => e.gender === "female").length
+    
+    // График статусов
+    let ctxStatus = document.getElementById("statusChart").getContext("2d")
+    if (statusChart) statusChart.destroy()
+    statusChart = new Chart(ctxStatus, {
+        type: "doughnut",
+        data: {
+            labels: Object.keys(statusStats),
+            datasets: [{
+                data: Object.values(statusStats),
+                backgroundColor: [
+                    "#43e97b", "#a8edea", "#4facfe", "#fa709a", 
+                    "#a8a8a8", "#f093fb", "#38f9d7", "#667eea"
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: "bottom" } }
+        }
+    })
+    
+    // График пола
+    let ctxGender = document.getElementById("genderChart").getContext("2d")
+    if (genderChart) genderChart.destroy()
+    genderChart = new Chart(ctxGender, {
+        type: "pie",
+        data: {
+            labels: ["Мужчины", "Женщины"],
+            datasets: [{
+                data: [male, female],
+                backgroundColor: ["#667eea", "#f093fb"]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: "bottom" } }
+        }
+    })
 }
 
-function importData() {
-    let input = document.createElement("input")
-    input.type = "file"
-    input.accept = ".json"
-    input.onchange = function(e) {
-        let file = e.target.files[0]
-        if (!file) return
-        let reader = new FileReader()
-        reader.onload = function(evt) {
-            try {
-                let data = JSON.parse(evt.target.result)
-                if (data.employees) {
-                    employees = data.employees
-                    saveEmployeesToDB() // Сохраняем в IndexedDB
+// Уведомления
+function checkNotifications() {
+    if (employees.length === 0) return
+    
+    let today = new Date()
+    let notifications = []
+    
+    employees.forEach(emp => {
+        // Дни рождения
+        if (emp.birthday) {
+            let parts = emp.birthday.split(".")
+            if (parts.length === 3) {
+                let bday = new Date(parts[2], parts[1] - 1, parts[0])
+                bday.setFullYear(today.getFullYear())
+                
+                let diffTime = bday - today
+                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                
+                if (diffDays >= 0 && diffDays <= 7) {
+                    notifications.push(`🎂 День рождения у ${emp.name} через ${diffDays} дн.`)
                 }
-                if (data.globalPhoto) {
-                    globalPhoto = data.globalPhoto
-                    localStorage.setItem("globalPhoto", globalPhoto)
-                }
-                renderEmployees()
-                alert("Данные загружены в IndexedDB!")
-            } catch(err) {
-                alert("Ошибка: " + err.message)
             }
         }
-        reader.readAsText(file)
+        
+        // Окончание отпуска
+        if (emp.status === "Отпуск" && emp.dateRange) {
+            let dates = emp.dateRange.split(" - ")
+            if (dates.length === 2) {
+                let dateTo = new Date(dates[1].split(".").reverse().join("-"))
+                let diffTime = dateTo - today
+                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                
+                if (diffDays >= 0 && diffDays <= 3) {
+                    notifications.push(`📅 У ${emp.name} отпуск до ${dates[1]}`)
+                }
+            }
+        }
+    })
+        
+    // Показываем уведомления
+    let notifDiv = document.getElementById("notifications")
+    if (notifications.length > 0) {
+        notifDiv.innerHTML = notifications.map(n => `<div class="notif-item">${n}</div>`).join("")
+        notifDiv.style.display = "block"
+    } else {
+        notifDiv.style.display = "none"
     }
-    input.click()
 }
 
-function setupJsonBin() {
-    alert("Инструкция:\n\n1. Зайдите на https://jsonbin.io\n2. Зарегистрируйтесь (бесплатно)\n3. Нажмите 'Create New JSON Bin'\n4. Скопируйте 'Private API Access Key' (в настройках)\n5. Скопируйте ID из URL (например из 'jsonbin.io/v3/b/XXXXXX/...' это XXXXXX)")
-    
-    let apiKey = prompt("Введите Private API Access Key:")
-    if (!apiKey) return
-    let binId = prompt("Введите Bin ID (из URL):")
-    if (!binId) return
-    
-    localStorage.setItem("jsonBinApiKey", apiKey)
-    localStorage.setItem("jsonBinId", binId)
-    jsonBinApiKey = apiKey
-    jsonBinId = binId
-    
-    alert("JSONBin настроен! Теперь можете сохранять и загружать данные.")
+// Показывать уведомления при загрузке
+let originalRenderEmployees = renderEmployees
+renderEmployees = function() {
+    originalRenderEmployees()
+    setTimeout(() => {
+        checkNotifications()
+    }, 100)
 }
+
+// ============= ШАБЛОНЫ =============
+let templates = [
+    { name: "Обычный сотрудник", status: "На работе" },
+    { name: "В отпуске", status: "Отпуск", dateRange: "01.01.2025 - 15.01.2025" },
+    { name: "На больничном", status: "Больничный", dateRange: "10.01.2025 - 14.01.2025" },
+    { name: "Декрет", status: "Декрет", dateRange: "01.01.2025 - 31.12.2025" },
+    { name: "Уволен", status: "Увольнение", dateRange: "Уволен: 31.12.2024" }
+]
+
+function showTemplates() {
+    if (role !== "admin") { alert("Нет доступа"); return }
+    
+    let templateList = templates.map((t, i) => `${i + 1}. ${t.name} - ${t.status}`).join("\n")
+    let choice = prompt(`Выберите шаблон:\n\n${templateList}\n\nВведите номер:`)
+    
+    if (!choice) return
+    let index = parseInt(choice) - 1
+    
+    if (index >= 0 && index < templates.length) {
+        let t = templates[index]
+        document.getElementById("newStatus").value = t.status
+        toggleDateRange()
+        
+        if (t.dateRange) {
+            let dates = t.dateRange.split(" - ")
+            if (dates.length === 2) {
+                document.getElementById("newDateFrom").value = dates[0]
+                document.getElementById("newDateTo").value = dates[1]
+            } else if (t.dateRange.startsWith("Уволен:")) {
+                document.getElementById("newFiredDate").value = t.dateRange.replace("Уволен: ", "")
+            }
+        }
+        
+        // Показываем форму
+        let addSection = document.getElementById("addSection")
+        addSection.classList.remove("hidden")
+        document.getElementById("addBtn").textContent = "✕ Скрыть форму"
+        
+        alert(`Шаблон "${t.name}" применён! Заполните остальные поля.`)
+    } else {
+        alert("Неверный номер шаблона")
+    }
+}
+
+// Конец файла
