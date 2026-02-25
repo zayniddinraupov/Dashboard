@@ -1,4 +1,4 @@
-/* ANIMATIONS */
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -181,6 +181,7 @@ header h2 {
 
 header button {
     margin-left: 10px;
+    vertical-align: middle;
 }
 
 .container {
@@ -360,14 +361,14 @@ header button {
 }
 
 /* STATUS COLORS - More vibrant */
-.work { border-left: 6px solid #43e97b; }
-.study { border-left: 6px solid #a8edea; }
-.vacation { border-left: 6px solid #4facfe; }
-.sick { border-left: 6px solid #fa709a; }
-.unpaid { border-left: 6px solid #a8a8a8; }
-.maternity { border-left: 6px solid #f093fb; }
-.army { border-left: 6px solid #38f9d7; }
-.fired { border-left: 6px solid #667eea; }
+.work { border-left: 6px solid #00c853; }
+.study { border-left: 6px solid #00bcd4; }
+.vacation { border-left: 6px solid #2196f3; }
+.sick { border-left: 6px solid #f44336; }
+.unpaid { border-left: 6px solid #757575; }
+.maternity { border-left: 6px solid #e91e63; }
+.army { border-left: 6px solid #00bfa5; }
+.fired { border-left: 6px solid #5e35b1; }
 
 /* STATUS SELECT */
 .status-select {
@@ -381,14 +382,14 @@ header button {
     font-weight: 600;
 }
 
-.status-select.work { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-.status-select.study { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-.status-select.vacation { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.status-select.sick { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-.status-select.unpaid { background: linear-gradient(135deg, #a8a8a8 0%, #d4d4d4 100%); }
-.status-select.maternity { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.status-select.army { background: linear-gradient(135deg, #38f9d7 0%, #43e97b 100%); }
-.status-select.fired { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.status-select.work { background: linear-gradient(135deg, #00c853 0%, #69f0ae 100%); }
+.status-select.study { background: linear-gradient(135deg, #00bcd4 0%, #26c6da 100%); color: #000 !important; }
+.status-select.vacation { background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%); }
+.status-select.sick { background: linear-gradient(135deg, #f44336 0%, #ef5350 100%); }
+.status-select.unpaid { background: linear-gradient(135deg, #757575 0%, #9e9e9e 100%); }
+.status-select.maternity { background: linear-gradient(135deg, #e91e63 0%, #ec407a 100%); }
+.status-select.army { background: linear-gradient(135deg, #00bfa5 0%, #26a69a 100%); color: #000 !important; }
+.status-select.fired { background: linear-gradient(135deg, #5e35b1 0%, #7e57c2 100%); }
 
 /* STATUS VIEW */
 .status-view {
@@ -401,14 +402,14 @@ header button {
     font-weight: 600;
 }
 
-.status-view.work { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-.status-view.study { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-.status-view.vacation { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.status-view.sick { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-.status-view.unpaid { background: linear-gradient(135deg, #a8a8a8 0%, #d4d4d4 100%); }
-.status-view.maternity { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.status-view.army { background: linear-gradient(135deg, #38f9d7 0%, #43e97b 100%); }
-.status-view.fired { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.status-view.work { background: linear-gradient(135deg, #00c853 0%, #69f0ae 100%); }
+.status-view.study { background: linear-gradient(135deg, #00bcd4 0%, #26c6da 100%); color: #000 !important; }
+.status-view.vacation { background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%); }
+.status-view.sick { background: linear-gradient(135deg, #f44336 0%, #ef5350 100%); }
+.status-view.unpaid { background: linear-gradient(135deg, #757575 0%, #9e9e9e 100%); }
+.status-view.maternity { background: linear-gradient(135deg, #e91e63 0%, #ec407a 100%); }
+.status-view.army { background: linear-gradient(135deg, #00bfa5 0%, #26a69a 100%); color: #000 !important; }
+.status-view.fired { background: linear-gradient(135deg, #5e35b1 0%, #7e57c2 100%); }
 
 /* EDITABLE FIELDS */
 .editable {
@@ -564,4 +565,374 @@ hr {
         flex-direction: column;
         text-align: center;
     }
+}
+
+/* ============= LAMP BUTTON ============= */
+.lamp-btn {
+    background: transparent !important;
+    border: none !important;
+    padding: 8px 12px !important;
+    margin: 0 10px 0 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    position: relative;
+    cursor: pointer;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease;
+    vertical-align: middle;
+}
+
+.lamp-btn:hover {
+    transform: scale(1.1) !important;
+    box-shadow: none !important;
+}
+
+.lamp-icon {
+    font-size: 24px;
+    filter: drop-shadow(0 0 5px rgba(255, 200, 0, 0.5));
+    transition: all 0.3s ease;
+    display: block;
+}
+
+/* Ночная тема - лампочка горит ярче */
+body.night .lamp-icon {
+    filter: drop-shadow(0 0 15px rgba(255, 200, 0, 0.9));
+    animation: glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { filter: drop-shadow(0 0 10px rgba(255, 200, 0, 0.7)); }
+    to { filter: drop-shadow(0 0 20px rgba(255, 200, 0, 1)); }
+}
+
+/* ============= NIGHT THEME ============= */
+body.night {
+    background: #1a1a2e;
+}
+
+body.night .login {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
+body.night .login-box {
+    background: rgba(30, 30, 50, 0.95);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+body.night .login-box h2 {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+body.night .login-box input {
+    background: #2d2d44;
+    border-color: #3d3d5c;
+    color: #e0e0e0;
+}
+
+body.night .login-box input:focus {
+    border-color: #f5576c;
+    background: #1a1a2e;
+}
+
+body.night input,
+body.night select {
+    background: #2d2d44;
+    border-color: #3d3d5c;
+    color: #e0e0e0;
+}
+
+body.night input:focus,
+body.night select:focus {
+    border-color: #f5576c;
+    box-shadow: 0 0 0 4px rgba(245, 87, 108, 0.15);
+}
+
+body.night header {
+    background: #16213e;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.night header h2 {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+body.night header span {
+    color: #a0a0a0 !important;
+}
+
+body.night .lamp-cord {
+    background: #e0e0e0;
+}
+
+body.night .container {
+    background: transparent;
+}
+
+body.night .stats {
+    background: transparent;
+}
+
+body.night .stat-box {
+    background: #16213e;
+    border-color: #2d2d44;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    color: #e0e0e0;
+}
+
+body.night .stat-box span {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #fff !important;
+}
+
+body.night .stat-box strong {
+    color: #fff !important;
+}
+
+body.night .stat-box {
+    color: #fff !important;
+}
+
+body.night #addSection {
+    background: #16213e;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+body.night #addSection h3 {
+    color: #f5576c;
+}
+
+body.night #addSection input,
+body.night #addSection select {
+    background: #1a1a2e;
+    border-color: #3d3d5c;
+    color: #e0e0e0;
+}
+
+body.night #addSection input:focus,
+body.night #addSection select:focus {
+    border-color: #f5576c;
+    background: #2d2d44;
+}
+
+body.night #dateRangeFields,
+body.night #firedDateField {
+    background: #1a1a2e;
+}
+
+body.night #search {
+    background: #16213e;
+    border-color: #3d3d5c;
+    color: #e0e0e0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.night #genderFilter {
+    background: #16213e;
+    border-color: #3d3d5c;
+    color: #e0e0e0;
+}
+
+body.night .employee {
+    background: #16213e;
+    border-color: #2d2d44;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+body.night .employee h3 {
+    color: #e0e0e0;
+}
+
+body.night .employee p {
+    color: #a0a0a0;
+}
+
+body.night .employee img {
+    border-color: #2d2d44;
+}
+
+body.night .avatar-placeholder {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+body.night .toggle-extra-btn {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+}
+
+body.night .toggle-extra-btn:hover {
+    box-shadow: 0 8px 25px rgba(245, 87, 108, 0.5);
+}
+
+body.night #extra-0, 
+body.night #extra-1, 
+body.night #extra-2, 
+body.night #extra-3, 
+body.night #extra-4, 
+body.night #extra-5, 
+body.night #extra-6, 
+body.night #extra-7, 
+body.night #extra-8, 
+body.night #extra-9 {
+    background: #1a1a2e;
+}
+
+body.night #extra-0 p, 
+body.night #extra-1 p, 
+body.night #extra-2 p, 
+body.night #extra-3 p, 
+body.night #extra-4 p, 
+body.night #extra-5 p, 
+body.night #extra-6 p, 
+body.night #extra-7 p, 
+body.night #extra-8 p, 
+body.night #extra-9 p {
+    color: #a0a0a0;
+}
+
+body.night hr {
+    background: linear-gradient(90deg, #f093fb, #f5576c);
+}
+
+body.night .primary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+}
+
+body.night .primary:hover {
+    box-shadow: 0 8px 25px rgba(245, 87, 108, 0.5);
+}
+
+body.night .logout {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+}
+
+body.night .export {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.night .delete {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+body.night .edit {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+body.night .template-btn {
+    background: linear-gradient(135deg, #f5576c 0%, #e84393 100%) !important;
+}
+
+body.night #notifications {
+    background: linear-gradient(135deg, #2d2d44 0%, #3d3d5c 100%);
+    border-color: #f5576c;
+}
+
+body.night .notif-item {
+    color: #f5576c;
+}
+
+body.night .notif-item:not(:last-child) {
+    border-color: #3d3d5c;
+}
+
+body.night .editable:hover {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+body.night #chartsSection h3 {
+    color: #f5576c;
+}
+
+body.night #chartsSection > div > div {
+    background: #16213e;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+body.night #chartsSection h4 {
+    color: #e0e0e0;
+}
+
+/* НОЧНАЯ ТЕМА - Цвета статусов (более яркие) */
+body.night .status-select.work,
+body.night .status-view.work { 
+    background: linear-gradient(135deg, #00e676 0%, #69f0ae 100%) !important; 
+    color: #000 !important;
+}
+
+body.night .status-select.study,
+body.night .status-view.study { 
+    background: linear-gradient(135deg, #80deea 0%, #b2ebf2 100%) !important;
+    color: #000 !important;
+}
+
+body.night .status-select.vacation,
+body.night .status-view.vacation { 
+    background: linear-gradient(135deg, #40c4ff 0%, #80d8ff 100%) !important;
+    color: #000 !important;
+}
+
+body.night .status-select.sick,
+body.night .status-view.sick { 
+    background: linear-gradient(135deg, #ff5252 0%, #ff8a80 100%) !important;
+    color: #fff !important;
+}
+
+body.night .status-select.unpaid,
+body.night .status-view.unpaid { 
+    background: linear-gradient(135deg, #bdbdbd 0%, #e0e0e0 100%) !important;
+    color: #000 !important;
+}
+
+body.night .status-select.maternity,
+body.night .status-view.maternity { 
+    background: linear-gradient(135deg, #ea80fc 0%, #f48fb1 100%) !important;
+    color: #000 !important;
+}
+
+body.night .status-select.army,
+body.night .status-view.army { 
+    background: linear-gradient(135deg, #1de9b6 0%, #64ffda 100%) !important;
+    color: #000 !important;
+}
+
+body.night .status-select.fired,
+body.night .status-view.fired { 
+    background: linear-gradient(135deg, #7c4dff 0%, #b388ff 100%) !important;
+    color: #fff !important;
+}
+
+/* Цвета border-left для статусов в ночной теме */
+body.night .employee.work { border-left: 6px solid #00e676; }
+body.night .employee.study { border-left: 6px solid #80deea; }
+body.night .employee.vacation { border-left: 6px solid #40c4ff; }
+body.night .employee.sick { border-left: 6px solid #ff5252; }
+body.night .employee.unpaid { border-left: 6px solid #bdbdbd; }
+body.night .employee.maternity { border-left: 6px solid #ea80fc; }
+body.night .employee.army { border-left: 6px solid #1de9b6; }
+body.night .employee.fired { border-left: 6px solid #7c4dff; }
+
+/* FOOTER */
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-size: 13px;
+    background: transparent;
+}
+
+body.night footer {
+    color: #a0a0a0;
+}
+
+body.night footer strong {
+    color: #f5576c;
 }

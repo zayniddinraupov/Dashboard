@@ -3,6 +3,24 @@ let employees = []
 let globalPhoto = "https://i.ibb.co/cVn0mgx/photo-2024-12-01-12-00-00.jpg"
 let db = null
 
+// Тема (день/ночь)
+function toggleTheme() {
+    document.body.classList.toggle('night')
+    let isNight = document.body.classList.contains('night')
+    localStorage.setItem('theme', isNight ? 'night' : 'day')
+}
+
+// Загрузка темы при старте
+function loadTheme() {
+    let savedTheme = localStorage.getItem('theme')
+    if (savedTheme === 'night') {
+        document.body.classList.add('night')
+    }
+}
+
+// Вызываем при загрузке
+loadTheme()
+
 // IndexedDB - более надежное хранилище (50-100MB вместо 5MB)
 const DB_NAME = "HR_Database"
 const DB_VERSION = 1
@@ -323,6 +341,8 @@ function loginUser() {
         } else if (role === "supervisor") {
             document.getElementById("userRole").textContent = " | Supervazer"
             clearTestEmployees()
+            // Автоматическая загрузка из облака для супервизора
+            loadFromCloud()
         } else {
             document.querySelector(".export").style.display = "none"
             document.getElementById("userRole").textContent = " | Supervazer"
@@ -684,20 +704,42 @@ function updateStats() {
 }
 
 function exportExcel() {
+    // Спросить что экспортировать
+    let choice = prompt("Выберите категорию для экспорта:\n1 - Все сотрудники\n2 - Только мужчины\n3 - Только женщины\n\nВведите номер:")
+    
+    if (!choice) return
+    
+    let filteredEmployees = []
+    if (choice === "1") {
+        filteredEmployees = employees
+    } else if (choice === "2") {
+        filteredEmployees = employees.filter(e => e.gender === "male")
+    } else if (choice === "3") {
+        filteredEmployees = employees.filter(e => e.gender === "female")
+    } else {
+        alert("Неверный выбор!")
+        return
+    }
+    
+    if (filteredEmployees.length === 0) {
+        alert("Нет сотрудников для экспорта!")
+        return
+    }
+    
     if (typeof XLSX === "undefined") {
         alert("Загрузка библиотеки...")
         let script = document.createElement("script")
         script.src = "https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"
-        script.onload = function () { performExport() }
+        script.onload = function () { performExport(filteredEmployees) }
         document.head.appendChild(script)
         return
     }
-    performExport()
+    performExport(filteredEmployees)
 }
 
-function performExport() {
+function performExport(data) {
     try {
-        let data = employees.map(e => ({
+        let exportData = data.map(e => ({
             "ФИО": e.name,
             "Телефон": e.phone,
             "Оператор": e.operator,
@@ -708,7 +750,7 @@ function performExport() {
             "Пол": e.gender === "male" ? "Мужской" : "Женский"
         }))
         let wb = XLSX.utils.book_new()
-        let ws = XLSX.utils.json_to_sheet(data)
+        let ws = XLSX.utils.json_to_sheet(exportData)
         XLSX.utils.book_append_sheet(wb, ws, "Сотрудники")
         XLSX.writeFile(wb, "HR_Report.xlsx")
     } catch (err) {

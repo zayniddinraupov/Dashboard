@@ -31,7 +31,10 @@
         <header>
             <h2>Dashboard <span id="userRole" style="font-size:14px;color:#666;font-weight:normal;"></span></h2>
             <div>
-                <span style="margin-right:15px;color:#666;font-size:12px;">Разработчик: sam_veb_razrabaotclik</span>
+                <!-- Кнопка-лампочка -->
+                <button class="lamp-btn" onclick="toggleTheme()" title="Переключить тему">
+                    <span class="lamp-icon">💡</span>
+                </button>
                 <button class="export" style="display:none" onclick="exportExcel()">Экспорт</button>
                 <button class="logout" onclick="logout()">Выйти</button>
             </div>
@@ -131,6 +134,11 @@
             <div id="employeeList"></div>
 
         </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>👨‍💻 Разработчик: <strong>Zayniddin</strong> | @sam_veb_razrabaotclik</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>
