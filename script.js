@@ -614,8 +614,10 @@ function renderEmployees() {
     list.innerHTML = ""
     employees.filter(e => {
         let matchName = e.name.toLowerCase().includes(searchQuery)
+        let matchPhone = e.phone?.toLowerCase().includes(searchQuery)
+        let matchOperator = e.operator?.toLowerCase().includes(searchQuery)
         let matchGender = !genderFilter || e.gender === genderFilter
-        return matchName && matchGender
+        return (matchName || matchPhone || matchOperator) && matchGender
     })
         .forEach((emp, i) => {
             let div = document.createElement("div")
@@ -654,14 +656,14 @@ ${role === "admin" ? `
 `: ""}
 </div>
 </div>
-<p><b class="editable" onclick="editField(${i},'phone')">Телефон:</b> ${emp.phone}</p>
+<p><b class="editable" onclick="editField(${i},'operator')">Оператор:</b> ${emp.operator || "Нет"}</p>
 <button class="toggle-extra-btn" onclick="toggleEmployeeExtra(${i})">📋 Подробнее</button>
 <div id="extra-${i}" style="display:none">
-<p><b class="editable" onclick="editField(${i},'operator')">Оператор:</b> ${emp.operator || "Нет"}</p>
-<p><b class="editable" onclick="editField(${i},'address')">Адрес:</b> ${emp.address || "Нет"}</p>
-<p><b class="editable" onclick="editField(${i},'date')">Дата приёма:</b> ${emp.date || "Нет"}</p>
-<p><b class="editable" onclick="editField(${i},'birthday')">Дата рождения:</b> ${emp.birthday || "Нет"}</p>
-<p><b class="editable" onclick="editField(${i},'gender')">Пол:</b> ${emp.gender === "male" ? "👨 Мужской" : "👩 Женский"}</p>
+<p><b class="editable" onclick="editField(${i},'phone')">📱 Телефон:</b> ${emp.phone}</p>
+<p><b class="editable" onclick="editField(${i},'address')">🏠 Адрес:</b> ${emp.address || "Нет"}</p>
+<p><b class="editable" onclick="editField(${i},'date')">📅 Дата приёма:</b> ${emp.date || "Нет"}</p>
+<p><b class="editable" onclick="editField(${i},'birthday')">🎂 Дата рождения:</b> ${emp.birthday || "Нет"}</p>
+<p><b class="editable" onclick="editField(${i},'gender')">👤 Пол:</b> ${emp.gender === "male" ? "👨‍💼 Мужской" : "👩‍💼 Женский"}</p>
 </div>
 `
             list.appendChild(div)
@@ -695,6 +697,7 @@ function updateStats() {
 <div class="stat-box">Мужчин<span>${male}</span></div>
 <div class="stat-box">Женщин<span>${female}</span></div>
 <div class="stat-box">На работе<span>${stats["На работе"]}</span></div>
+<div class="stat-box">Учёба<span>${stats["Учёба"]}</span></div>
 <div class="stat-box">Отпуск<span>${stats["Отпуск"]}</span></div>
 <div class="stat-box">Больничный<span>${stats["Больничный"]}</span></div>
 <div class="stat-box">Без содержания<span>${stats["Без содержания"]}</span></div>
@@ -867,10 +870,15 @@ function checkNotifications() {
         }
     })
         
-    // Показываем уведомления
+    // Показываем уведомления с кнопкой закрытия
     let notifDiv = document.getElementById("notifications")
     if (notifications.length > 0) {
-        notifDiv.innerHTML = notifications.map(n => `<div class="notif-item">${n}</div>`).join("")
+        notifDiv.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:bold;">🔔 Уведомления</span>
+                <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;">✓</button>
+            </div>
+            ${notifications.map(n => `<div class="notif-item">${n}</div>`).join("")}`
         notifDiv.style.display = "block"
     } else {
         notifDiv.style.display = "none"

@@ -340,6 +340,16 @@ header button {
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
+.avatar-placeholder.male {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    font-size: 32px;
+}
+
+.avatar-placeholder.female {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    font-size: 32px;
+}
+
 /* TOGGLE EXTRA BUTTON */
 .toggle-extra-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -377,7 +387,7 @@ header button {
     border-radius: 50px;
     font-size: 13px;
     cursor: pointer;
-    color: white;
+    color: rgb(65, 65, 107);
     margin-top: 10px;
     font-weight: 600;
 }
