@@ -432,8 +432,8 @@ function endBreak() {
     let breakData = {
         name: employeeName,
         type: breakType,
-        duration: breakDuration,
-        actualMinutes: actualMinutes,
+        plannedDuration: breakDuration,  // Запланированное время
+        actualMinutes: actualMinutes,    // Фактическое время
         limit: limit,
         overtime: overtime,
         startTime: activeBreak.startTime,
@@ -472,8 +472,8 @@ function endBreak() {
         message = `⚠️ ПРЕВЫШЕНИЕ ВРЕМЕНИ!\n\n⏱ Лимит: ${limit} мин\n⏱ Фактически: ${actualMinutes} мин\n⏱ Превышение: ${overtime} мин`
     }
     
-    // Отправляем уведомление о завершении
-    sendTelegramNotification(employeeName, breakType, breakDuration, "конец", message)
+    // Отправляем уведомление о завершении с фактическим временем
+    sendTelegramNotification(employeeName, breakType, actualMinutes, "конец", message)
     
     // Сбрасываем интерфейс
     activeBreak = null
@@ -531,10 +531,13 @@ function sendTelegramNotification(employeeName, breakType, minutes, moment, extr
     let workType = getEmployeeWorkType(employeeName)
     let limit = WORK_TYPES[workType]?.breakMinutes || 105
     
+    // Показываем фактическое время или запланированное
+    let timeText = moment === "начало" ? `⏱ Планировал: ${minutes} минут` : `⏱ Фактически: ${minutes} минут`
+    
     let message = `${emoji} *Перерыв ${text}*\n\n` +
         `👤 Сотрудник: ${employeeName}\n` +
         `🍽 Тип: ${breakType}\n` +
-        `⏱ Взял: ${minutes} минут\n` +
+        `${timeText}\n` +
         `📏 Лимит: ${limit} мин\n` +
         `🕐 Время: ${new Date().toLocaleString("ru-RU")}`
     
@@ -577,7 +580,7 @@ function sendDailyReport() {
         return
     }
     
-    let totalBreakTime = todayBreaks.reduce((sum, b) => sum + (b.actualMinutes || b.duration), 0)
+    let totalBreakTime = todayBreaks.reduce((sum, b) => sum + (b.actualMinutes || b.plannedDuration || b.duration || 0), 0)
     let limit = getEmployeeBreakLimit(currentEmployee.name)
     let workHours = WORK_TYPES[getEmployeeWorkType(currentEmployee.name)]?.workHours || 9
     
@@ -722,12 +725,20 @@ function renderBreakHistory() {
     // Показываем последние 10 перерывов (новые сверху)
     let recentBreaks = myBreaks.slice(-10).reverse()
     
-    list.innerHTML = recentBreaks.map(b => `
+    list.innerHTML = recentBreaks.map(b => {
+        // Показываем фактическое время, если есть
+        let actual = b.actualMinutes || b.plannedDuration || b.duration
+        let wasOvertime = b.overtime > 0
+        let timeDisplay = wasOvertime ? 
+            `<span style="color:#e74c3c;">${actual} мин</span>` : 
+            `${actual} мин`
+        
+        return `
         <div class="break-item">
-            <span class="break-type">${getBreakIcon(b.type)} ${b.type} (${b.duration} мин)</span>
+            <span class="break-type">${getBreakIcon(b.type)} ${b.type} (${timeDisplay})</span>
             <span class="break-time">${b.endTime}</span>
         </div>
-    `).join("")
+    `}).join("")
 }
 
 function getBreakIcon(type) {
@@ -748,7 +759,7 @@ function manageEmployeeCreds() {
     let list = Object.entries(currentCreds).map(([login, data]) =>
         `${login}: ${data.password} (${data.name})`
     ).join("\n")
-
+    
     let newCreds = prompt(`Сотрудники (логин:пароль:имя):\n\n${list}\n\nВведите логин, пароль и имя через двоеточие (например: user1:123:Имя):`)
     
     if (!newCreds) return
@@ -1164,7 +1175,7 @@ function showAbsencesSection() {
         section.classList.add("hidden")
         return
     }
-    
+
     // Создаём секцию если её нет
     if (!section) {
         let container = document.querySelector("#mainPage .container")
@@ -2030,6 +2041,9 @@ function loginUser() {
             document.querySelector(".export").style.display = "none"
             document.getElementById("userRole").textContent = " | Supervazer"
         }
+        
+        // Инициализируем чат после входа
+        initChatWhenReady()
         renderEmployees()
     })
 }
@@ -2124,7 +2138,7 @@ function handleGlobalPhotoUpload(event) {
     reader.readAsDataURL(file)
     event.target.value = ""
 }
-    
+        
 function logout() {
     // Сохраняем данные перед выходом
     saveToGoogleSheet()
@@ -2711,6 +2725,7 @@ let lastReadMessageId = null
 
 // Инициализация чата
 function initChat() {
+    console.log("initChat вызван!")
     // Загружаем ID последнего прочитанного сообщения
     lastReadMessageId = localStorage.getItem("lastReadMessageId")
     
@@ -2886,15 +2901,21 @@ function saveChatToLocal() {
 
 // Переключить чат
 function toggleChat() {
+    console.log("toggleChat вызван!")
     let panel = document.getElementById("chatPanel")
     if (!panel) {
         console.log("Панель чата не найдена!")
+        alert("Ошибка: панель чата не найдена")
         return
     }
     
-    if (panel.classList.contains("hidden")) {
+    console.log("Панель найдена, текущий display:", panel.style.display, "класс hidden:", panel.classList.contains("hidden"))
+    
+    let isHidden = panel.style.display === "none" || panel.classList.contains("hidden")
+    
+    if (isHidden) {
         panel.classList.remove("hidden")
-        panel.style.display = "flex"  // Явно показываем
+        panel.style.display = "flex"
         chatUnread = 0
         updateChatBadge()
         renderChatMessages()
@@ -2915,7 +2936,7 @@ function toggleChat() {
         }, 100)
     } else {
         panel.classList.add("hidden")
-        panel.style.display = "none"  // Явно скрываем
+        panel.style.display = "none"
         // Сохраняем ID последнего сообщения как прочитанное
         if (chatMessages.length > 0) {
             let lastMsg = chatMessages[chatMessages.length - 1]
@@ -2976,10 +2997,17 @@ function escapeHtml(text) {
     return div.innerHTML
 }
 
-// Инициализация чата при загрузке
-window.addEventListener('load', function() {
-    initChat()
-})
+// Инициализация чата - вызываем сразу после загрузки скрипта
+function initChatWhenReady() {
+    if (document.getElementById("chatPanel")) {
+        initChat()
+    } else {
+        setTimeout(initChatWhenReady, 100)
+    }
+}
+
+// Запускаем проверку
+initChatWhenReady()
 
 // ============= 1. УВЕДОМЛЕНИЯ В БРАУЗЕРЕ =============
 // Запросить разрешение на уведомления
