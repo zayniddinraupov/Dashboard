@@ -214,6 +214,12 @@ header button {
 .stat-box:hover {
     transform: translateY(-5px);
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    border-color: #667eea;
+}
+
+body.night .stat-box:hover {
+    border-color: #f5576c;
 }
 
 .stat-box {
@@ -945,4 +951,321 @@ body.night footer {
 
 body.night footer strong {
     color: #f5576c;
+}
+
+/* ============= EMPLOYEE DASHBOARD ============= */
+.employee-break-card {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.5s ease-out;
+}
+
+body.night .employee-break-card {
+    background: #16213e;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.employee-break-card h3 {
+    color: #667eea;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+body.night .employee-break-card h3 {
+    color: #f5576c;
+}
+
+.break-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.break-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.break-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+}
+
+.break-btn:active {
+    transform: scale(0.95);
+}
+
+.break-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.break-history {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    text-align: left;
+}
+
+body.night .break-history {
+    background: #16213e;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.break-history h4 {
+    color: #667eea;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+body.night .break-history h4 {
+    color: #f5576c;
+}
+
+.break-item {
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+body.night .break-item {
+    background: #1a1a2e;
+}
+
+.break-item .break-type {
+    font-weight: 600;
+    color: #333;
+}
+
+body.night .break-item .break-type {
+    color: #e0e0e0;
+}
+
+.break-item .break-time {
+    color: #666;
+    font-size: 13px;
+}
+
+body.night .break-item .break-time {
+    color: #a0a0a0;
+}
+
+/* ========== ЧАТ ========== */
+.chat-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 18px;
+    margin-right: 10px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.chat-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.chat-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #e74c3c;
+    color: white;
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.chat-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    height: 450px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+.chat-panel.hidden {
+    display: none !important;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+body.night .chat-panel {
+    background: #1a1a2e;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.chat-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.chat-header button {
+    color: white;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 15px;
+    font-size: 14px;
+    word-wrap: break-word;
+}
+
+.chat-message.own {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom-right-radius: 5px;
+}
+
+.chat-message.other {
+    align-self: flex-start;
+    background: #f0f2f5;
+    color: #333;
+    border-bottom-left-radius: 5px;
+}
+
+body.night .chat-message.other {
+    background: #2d2d44;
+    color: #e0e0e0;
+}
+
+.chat-message .msg-author {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+
+.chat-message .msg-time {
+    font-size: 10px;
+    opacity: 0.6;
+    text-align: right;
+    margin-top: 4px;
+}
+
+.chat-input {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+}
+
+body.night .chat-input {
+    border-top-color: #2d2d44;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    outline: none;
+    font-size: 14px;
+}
+
+body.night .chat-input input {
+    background: #2d2d44;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+.chat-input input:focus {
+    border-color: #667eea;
+}
+
+.chat-input button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s ease;
+}
+
+.chat-input button:hover {
+    transform: scale(1.1);
+}
+
+.chat-empty {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 14px;
 }
