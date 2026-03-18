@@ -15,7 +15,7 @@ let breakTimer = null
 // Логин/пароль для входа сотрудников (admin может добавлять)
 let employeeCredentials = JSON.parse(localStorage.getItem("employeeCredentials")) || {
     "zayniddin": { password: "3020", name: "Зайниддин" },
-    "abdulloh": { password: "1111", name: "Абдуллох" },
+    "Sabina": { password: "3029", name: "Ходжамова Сабина" },
     "bahodir": { password: "2222", name: "Баходир" }
 }
 
@@ -781,7 +781,11 @@ function manageEmployeeCreds() {
     
     employeeCredentials[login] = { password, name }
     localStorage.setItem("employeeCredentials", JSON.stringify(employeeCredentials))
-    alert(`Сотрудник ${name} добавлен!`)
+    
+    // Сохраняем в облако сразу после добавления
+    saveToCloud()
+    
+    alert(`Сотрудник ${name} добавлен!\nТеперь данные синхронизированы с облаком.`)
 }
 
 // Тема (день/ночь)
@@ -883,7 +887,7 @@ function addToShift(empName, shiftName) {
         alert("Сотрудник уже в этой смене!")
         return
     }
-    
+
     // Удаляем из других смен
     for (let s in shifts) {
         shifts[s] = shifts[s].filter(e => e !== empName)
@@ -1175,7 +1179,7 @@ function showAbsencesSection() {
         section.classList.add("hidden")
         return
     }
-
+    
     // Создаём секцию если её нет
     if (!section) {
         let container = document.querySelector("#mainPage .container")
@@ -1469,17 +1473,21 @@ function saveToCloud() {
         employees: employees, 
         globalPhoto: globalPhoto,
         absences: absences,
+        employeeCredentials: employeeCredentials,
+        chatMessages: chatMessages,
         lastSaved: new Date().toISOString()
     }
     localStorage.setItem("hrDataBackup", JSON.stringify(localData))
     console.log("✅ Резервная копия сохранена в localStorage")
     
-    if (employees.length === 0 && absences.length === 0) return
+    if (employees.length === 0 && absences.length === 0 && Object.keys(employeeCredentials).length === 0) return
     
     let data = { 
         employees: employees, 
         globalPhoto: globalPhoto,
-        absences: absences
+        absences: absences,
+        employeeCredentials: employeeCredentials,
+        chatMessages: chatMessages
     }
     let jsonStr = JSON.stringify(data)
     
@@ -1505,7 +1513,7 @@ function saveToCloud() {
         console.log("ℹ️ JSONBin не настроен. Данные сохранены локально в браузере.")
     }
 }
-
+    
 // Загрузка из облака (включая отсутствия)
 function loadFromCloud() {
     // Если JSONBin настроен - загружаем
@@ -1533,6 +1541,19 @@ function loadFromCloud() {
                     // Сохраняем в IndexedDB
                     absences.forEach(a => saveAbsenceToDB(a))
                     console.log("✅ Загружено отсутствий:", absences.length)
+                }
+                // Загружаем логины сотрудников из облака
+                if (data.record.employeeCredentials) {
+                    employeeCredentials = data.record.employeeCredentials
+                    localStorage.setItem("employeeCredentials", JSON.stringify(employeeCredentials))
+                    console.log("✅ Загружены логины сотрудников")
+                }
+                // Загружаем сообщения чата из облака
+                if (data.record.chatMessages) {
+                    chatMessages = data.record.chatMessages
+                    localStorage.setItem("chatMessages", JSON.stringify(chatMessages))
+                    renderChatMessages()
+                    console.log("✅ Загружены сообщения чата")
                 }
                 alert(`Загрузка завершена!\n👥 Сотрудников: ${employees.length}\n📋 Отсутствий: ${absences.length}`)
             }
@@ -1670,7 +1691,19 @@ function restoreFromBackup() {
             localStorage.setItem("globalPhoto", globalPhoto)
         }
         
-        alert(`✅ Восстановлено!\n👥 Сотрудников: ${employees.length}\n📋 Отсутствий: ${absences.length}\n🕐 Дата backup: ${data.lastSaved ? new Date(data.lastSaved).toLocaleString("ru-RU") : "неизвестно"}`)
+        // Восстанавливаем логины сотрудников
+        if (data.employeeCredentials) {
+            employeeCredentials = data.employeeCredentials
+            localStorage.setItem("employeeCredentials", JSON.stringify(employeeCredentials))
+        }
+        
+        // Восстанавливаем сообщения чата
+        if (data.chatMessages) {
+            chatMessages = data.chatMessages
+            localStorage.setItem("chatMessages", JSON.stringify(chatMessages))
+        }
+        
+        alert(`✅ Восстановлено!\n👥 Сотрудников: ${employees.length}\n📋 Отсутствий: ${absences.length}\n🔐 Логинов: ${Object.keys(employeeCredentials).length}\n💬 Сообщений: ${chatMessages.length}\n🕐 Дата backup: ${data.lastSaved ? new Date(data.lastSaved).toLocaleString("ru-RU") : "неизвестно"}`)
     } catch (e) {
         alert("Ошибка восстановления: " + e.message)
     }
@@ -1755,6 +1788,8 @@ function loadFromCloudQuiet() {
         if (data.record) {
             let cloudEmployees = data.record.employees || []
             let cloudAbsences = data.record.absences || []
+            let cloudCreds = data.record.employeeCredentials || {}
+            let cloudChat = data.record.chatMessages || []
             
             // Если в облаке есть новые данные - обновляем
             if (cloudEmployees.length !== employees.length || cloudAbsences.length !== absences.length) {
@@ -1763,6 +1798,19 @@ function loadFromCloudQuiet() {
                 absences = cloudAbsences
                 saveEmployeesToDB()
                 renderEmployees()
+            }
+            
+            // Обновляем логины сотрудников
+            if (Object.keys(cloudCreds).length > 0) {
+                employeeCredentials = cloudCreds
+                localStorage.setItem("employeeCredentials", JSON.stringify(employeeCredentials))
+            }
+            
+            // Обновляем сообщения чата
+            if (cloudChat.length > 0 && JSON.stringify(cloudChat) !== JSON.stringify(chatMessages)) {
+                chatMessages = cloudChat
+                localStorage.setItem("chatMessages", JSON.stringify(chatMessages))
+                renderChatMessages()
             }
         }
     })
@@ -1778,6 +1826,8 @@ saveData = function() {
         employees: employees,
         absences: absences,
         globalPhoto: globalPhoto,
+        employeeCredentials: employeeCredentials,
+        chatMessages: chatMessages,
         lastSaved: new Date().toISOString(),
         version: "2.0"
     }
@@ -1842,9 +1892,17 @@ function applyEmergencyData(data, sourceName) {
     if (data.globalPhoto) {
         globalPhoto = data.globalPhoto
     }
+    if (data.employeeCredentials) {
+        employeeCredentials = data.employeeCredentials
+        localStorage.setItem("employeeCredentials", JSON.stringify(employeeCredentials))
+    }
+    if (data.chatMessages) {
+        chatMessages = data.chatMessages
+        localStorage.setItem("chatMessages", JSON.stringify(chatMessages))
+    }
     
     renderEmployees()
-    alert(`✅ Данные восстановлены!\n👥 Сотрудников: ${employees.length}\n📋 Отсутствий: ${absences.length}`)
+    alert(`✅ Данные восстановлены!\n👥 Сотрудников: ${employees.length}\n📋 Отсутствий: ${absences.length}\n🔐 Логинов: ${Object.keys(employeeCredentials).length}`)
 }
 
 // Экспорт данных в файл
@@ -1853,6 +1911,8 @@ function exportDataToFile() {
         employees: employees,
         absences: absences,
         globalPhoto: globalPhoto,
+        employeeCredentials: employeeCredentials,
+        chatMessages: chatMessages,
         exportedAt: new Date().toISOString(),
         version: "2.0"
     }
@@ -1902,6 +1962,14 @@ function importDataFromFile() {
                 }
                 if (data.globalPhoto) {
                     globalPhoto = data.globalPhoto
+                }
+                if (data.employeeCredentials) {
+                    employeeCredentials = data.employeeCredentials
+                    localStorage.setItem("employeeCredentials", JSON.stringify(employeeCredentials))
+                }
+                if (data.chatMessages) {
+                    chatMessages = data.chatMessages
+                    localStorage.setItem("chatMessages", JSON.stringify(chatMessages))
                 }
                 
                 renderEmployees()
@@ -2138,7 +2206,7 @@ function handleGlobalPhotoUpload(event) {
     reader.readAsDataURL(file)
     event.target.value = ""
 }
-        
+    
 function logout() {
     // Сохраняем данные перед выходом
     saveToGoogleSheet()
@@ -2894,9 +2962,11 @@ function sendChatMessage() {
     }, 100)
 }
 
-// Сохранить сообщения в localStorage (fallback)
+// Сохранить сообщения в localStorage и облако
 function saveChatToLocal() {
     localStorage.setItem("chatMessages", JSON.stringify(chatMessages))
+    // Также сохраняем в облако для синхронизации между ПК
+    saveToCloud()
 }
 
 // Переключить чат
