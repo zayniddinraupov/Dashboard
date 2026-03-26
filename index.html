@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Самарканд | HR Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>">
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="stayl.css">
+</head>
+
+<body>
+
+    <!-- LOGIN -->
+    <div id="loginPage" class="login">
+        <div class="login-box">
+            <h2>Login</h2>
+            <input id="login" placeholder="Логин">
+            <input id="password" type="password" placeholder="Пароль">
+            <button class="primary" id="loginBtn" onclick="loginUser()">Войти</button>
+            <p style="margin-top:15px;font-size:12px;color:#666;">
+                <a href="#" onclick="showEmployeeLogin();return false;" style="color:#667eea;">Вход для сотрудника</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- EMPLOYEE LOGIN -->
+    <div id="employeeLoginPage" class="login" style="display:none;">
+        <div class="login-box">
+            <h2>👷 Сотрудник</h2>
+            <input id="empLogin" placeholder="Логин сотрудника">
+            <input id="empPassword" type="password" placeholder="Пароль">
+            <button class="primary" onclick="loginEmployee()">Войти</button>
+            <p style="margin-top:15px;font-size:12px;">
+                <a href="#" onclick="showAdminLogin();return false;" style="color:#667eea;">← Назад</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- EMPLOYEE DASHBOARD -->
+    <div id="employeeDashboard" class="hidden">
+        <header>
+            <h2>👷 Перерывы <span id="empName" style="font-size:14px;color:#666;font-weight:normal;"></span></h2>
+            <div>
+                <button class="chat-btn" onclick="toggleChat()" title="Чат">
+                    <span>💬</span>
+                    <span class="chat-badge" style="display:none;">0</span>
+                </button>
+                <button class="lamp-btn" onclick="toggleTheme()" title="Переключить тему">
+                    <span class="lamp-icon">💡</span>
+                </button>
+                <button class="logout" onclick="logoutEmployee()">Выйти</button>
+            </div>
+        </header>
+
+        <div class="container" style="text-align:center;padding-top:30px;">
+            <div style="max-width:600px;margin:0 auto;">
+                <!-- Таймер перерыва -->
+                <div id="activeBreak" class="employee-break-card" style="display:none;margin-bottom:30px;">
+                    <h3>⏱️ Перерыв в процессе</h3>
+                    <div id="timerDisplay" style="font-size:48px;font-weight:bold;color:#667eea;margin:20px 0;">00:00</div>
+                    <p id="breakTypeDisplay" style="font-size:18px;color:#666;"></p>
+                    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                        <button class="primary" onclick="changeBreak()" style="padding:12px 25px;font-size:14px;">🔄 Изменить перерыв</button>
+                        <button class="primary" onclick="endBreak()" style="padding:12px 25px;font-size:14px;">✅ Завершить</button>
+                    </div>
+                </div>
+
+<!-- Кнопки перерыва для сотрудника -->
+                <div class="employee-break-card" id="employeeBreakCard" style="display:none;">
+                    <!-- Тип работы назначает только админ -->
+                    <div id="workTypeInfo" style="margin-bottom:20px;padding:15px;background:#f8f9fa;border-radius:10px;">
+                        <label style="font-weight:bold;display:block;margin-bottom:10px;">⏱ Тип рабочего времени:</label>
+                        <div id="workTypeDisplayText" style="font-size:15px;color:#333;">9 часов (перерыв 105 мин)</div>
+                    </div>
+                    
+                    <!-- Информация о смене -->
+                    <div id="shiftInfo" style="margin-bottom:20px;"></div>
+                    
+                    <h3>🍽 Выберите перерыв</h3>
+                    <div class="break-buttons">
+                        <button class="break-btn" onclick="startBreak('Обед', 30)">
+                            <span class="break-icon">🍽</span>
+                            <span>Обед</span>
+                            <small style="opacity:0.8">(30 мин)</small>
+                        </button>
+                        <button class="break-btn" onclick="startBreak('Короткий перерыв', 10)">
+                            <span class="break-icon">☕</span>
+                            <span>Кофе</span>
+                            <small style="opacity:0.8">(10 мин)</small>
+                        </button>
+                        <button class="break-btn" onclick="startBreak('Перекур', 10)">
+                            <span class="break-icon">🚬</span>
+                            <span>Перекур</span>
+                            <small style="opacity:0.8">(10 мин)</small>
+                        </button>
+                        <button class="break-btn" onclick="startBreak('Личные дела', 10)">
+                            <span class="break-icon">👤</span>
+                            <span>Личное</span>
+                            <small style="opacity:0.8">(10 мин)</small>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- История перерывов -->
+                <div class="break-history" id="breakHistory" style="margin-top:30px;">
+                    <h4>📋 История перерывов</h4>
+                    <div id="breaksList"></div>
+                    <button onclick="clearBreaksData()" style="margin-top:15px;background:#e74c3c;color:white;border:none;padding:8px 15px;border-radius:8px;cursor:pointer;">🗑 Очистить мою историю</button>
+                </div>
+
+                <!-- Табель рабочего времени -->
+                <div style="margin-top:30px;padding:20px;background:white;border-radius:15px;box-shadow:0 5px 20px rgba(0,0,0,0.1);">
+                    <h4>⏰ Табель рабочего времени</h4>
+                    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:15px 0;">
+                        <button onclick="checkIn()" style="background:#27ae60;color:white;border:none;padding:12px 20px;border-radius:10px;cursor:pointer;font-size:14px;">✅ Приход</button>
+                        <button onclick="checkOut()" style="background:#e74c3c;color:white;border:none;padding:12px 20px;border-radius:10px;cursor:pointer;font-size:14px;">❌ Уход</button>
+                        <button onclick="showTimeSheet()" style="background:#3498db;color:white;border:none;padding:12px 20px;border-radius:10px;cursor:pointer;font-size:14px;">📋 Табель</button>
+                    </div>
+                </div>
+
+<!-- Статистика перерывов -->
+                <div style="margin-top:20px;">
+                    <button onclick="showBreakStats()" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;padding:15px 25px;border-radius:12px;cursor:pointer;font-size:15px;width:100%;">📊 Моя статистика перерывов</button>
+                </div>
+                
+                <!-- Кто ещё на перерыве -->
+                <div id="otherBreaks" style="margin-top:20px;padding:15px;background:white;border-radius:15px;box-shadow:0 5px 20px rgba(0,0,0,0.1);">
+                    <h4 style="margin:0 0 10px;">👥 Кто на перерыве</h4>
+                    <div id="otherBreaksList"></div>
+                </div>
+                
+                <!-- Отправить итоговый отчёт -->
+                <div style="margin-top:20px;">
+                    <button onclick="sendDailyReport()" style="background:linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);color:white;border:none;padding:15px 25px;border-radius:12px;cursor:pointer;font-size:15px;width:100%;">📤 Отправить итог дня в Telegram</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div id="mainPage" class="hidden">
+
+        <header>
+            <h2>Dashboard <span id="userRole" style="font-size:14px;color:#666;font-weight:normal;"></span></h2>
+            <div>
+                <!-- Кнопки справа -->
+                <button id="headerChartsBtn" class="primary" style="display:none;padding:10px 16px;font-size:13px;" onclick="toggleStats()">📊 Статистика <span id="statsToggleArrow">▼</span></button>
+                <button id="headerDiagramsBtn" class="primary" style="display:none;padding:10px 16px;font-size:13px;background:#e91e63;" onclick="toggleDiagrams()">📈 Диаграмма</button>
+                <button id="headerSidebarToggle" class="primary" style="display:none;padding:10px 16px;font-size:13px;background:#2c3e50;" onclick="toggleSidebar()">☰ Меню</button>
+                <!-- Кнопка чата -->
+                <button class="chat-btn" onclick="toggleChat()" title="Чат">
+                    <span>💬</span>
+                    <span class="chat-badge" style="display:none;">0</span>
+                </button>
+                <!-- Кнопка-лампочка -->
+                <button class="lamp-btn" onclick="toggleTheme()" title="Переключить тему">
+                    <span class="lamp-icon">💡</span>
+                </button>
+                <button class="export" style="display:none" onclick="exportExcel()">Экспорт</button>
+                <button class="logout" onclick="logout()">Выйти</button>
+            </div>
+        </header>
+
+        <div class="container">
+
+            <!-- Уведомления -->
+            <div id="notifications"></div>
+
+            <div class="stats" id="stats"></div>
+
+            <!-- Графики -->
+            <div id="chartsSection" style="margin: 30px 0; display: none; overflow-x: auto; padding-bottom: 10px;">
+                <h3 style="color: #667eea;">📊 Статистика</h3>
+                <div style="display: flex; gap: 30px; flex-wrap: nowrap; min-width: min-content;">
+                    <div style="flex: 1; min-width: 300px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+                        <h4 style="margin-top: 0; text-align: center;">По статусам</h4>
+                        <canvas id="statusChart" height="200"></canvas>
+                    </div>
+                    <div style="flex: 1; min-width: 300px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+                        <h4 style="margin-top: 0; text-align: center;">По полу</h4>
+                        <canvas id="genderChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="actionSidebar" class="action-sidebar collapsed">
+                <button id="addBtn" class="primary" style="display:none" onclick="toggleAdd()">+ Добавить сотрудника</button>
+                <button id="globalPhotoBtn" class="primary" style="display:none;background:#3498db;"
+                    onclick="document.getElementById('globalPhotoInput').click()">📷 Загрузить фото для всех</button>
+                <span id="autoSaveStatus" style="color:#27ae60;font-size:12px;display:none;">💾 Автосохранение...</span>
+                <button id="syncBtn" class="primary" style="display:none;background:#f39c12;"
+                    onclick="saveToGoogleSheet()">☁️ Сохранить</button>
+                <button class="primary" style="background:#27ae60;"
+                    onclick="loadFromCloud()">☁️ Загрузить</button>
+                <button id="clearAllBtn" class="primary" style="display:none;background:#e74c3c;"
+                    onclick="clearAllData()">🗑 Очистить всё</button>
+                <button class="primary" style="background:#16a085;" id="backupBtn"
+                    onclick="restoreFromBackup()">💾 Восстановить</button>
+                <button class="primary" style="display:none;background:#8e44ad;" id="exportBtn"
+                    onclick="exportDataToFile()">📤 Экспорт</button>
+                <button class="primary" style="display:none;background:#e67e22;" id="importBtn"
+                    onclick="importDataFromFile()">📥 Импорт</button>
+                <button class="primary" style="display:none;background:#2c3e50;" id="protectBtn"
+                    onclick="showDataProtectionStatus()">🛡 Защита</button>
+                <button id="employeeCredsBtn" class="primary" style="display:none;background:#9b59b6;"
+                    onclick="manageEmployeeCreds()">👷 Сотрудники</button>
+                <button class="primary" style="display:none;background:#9b59b6;" id="shiftBtn"
+                    onclick="manageShifts()">👥 Смены</button>
+            </div>
+            <input type="file" id="globalPhotoInput" accept="image/*" style="display:none"
+                onchange="handleGlobalPhotoUpload(event)">
+            <input type="file" id="employeePhotoInput" accept="image/*" style="display:none"
+                onchange="handleEmployeePhotoUpload(event)">
+
+            <div id="addSection" class="hidden">
+                <h3 style="margin:20px 0">Добавить сотрудника</h3>
+                <input id="newName" placeholder="ФИО">
+                <input id="newPhone" placeholder="+998">
+                <select id="newGender">
+                    <option value="male">Мужской</option>
+                    <option value="female">Женский</option>
+                </select>
+                <select id="newStatus" onchange="toggleDateRange()">
+                    <option>На работе</option>
+                    <option>Учёба</option>
+                    <option>Отпуск</option>
+                    <option>Больничный</option>
+                    <option>Без содержания</option>
+                    <option>Декрет</option>
+                    <option>Армия</option>
+                    <option>Увольнение</option>
+                </select>
+                <button type="button" onclick="toggleExtraFields()" style="background:#9b59b6;color:white;margin:10px 0;">📋 Дополнительные поля</button>
+                <div id="extraFields" style="display:none">
+                    <input id="newOperator" placeholder="Номер оператора">
+                    <input id="newAddress" placeholder="Адрес">
+                    <input id="newDate" placeholder="Дата приема (01.01.2024)">
+                    <input id="newBirthday" placeholder="Дата рождения (01.01.2000)">
+                    <input id="newPhoto" placeholder="URL фото (необязательно)">
+                </div>
+                <div id="dateRangeFields"
+                    style="display:none; margin:10px 0; padding:10px; background:#f8f9fa; border-radius:5px;">
+                    <label>Период: </label>
+                    <input id="newDateFrom" placeholder="С (01.01.2024)" style="width:150px">
+                    <input id="newDateTo" placeholder="По (31.01.2024)" style="width:150px">
+                </div>
+                <div id="firedDateField"
+                    style="display:none; margin:10px 0; padding:10px; background:#f8f9fa; border-radius:5px;">
+                    <label>Дата увольнения: </label>
+                    <input id="newFiredDate" placeholder="Дата (01.01.2024)" style="width:150px">
+                </div>
+                <button class="primary" onclick="addEmployee()">Добавить</button>
+            </div>
+
+            <hr style="margin:30px 0">
+
+            <input id="search" placeholder="Поиск..." onkeyup="renderEmployees()">
+            <select id="genderFilter" onchange="renderEmployees()" style="margin-left:10px;padding:8px;border-radius:5px;border:1px solid #ddd;">
+                <option value="">Все полы</option>
+                <option value="male">👨 Мужской</option>
+                <option value="female">👩 Женский</option>
+            </select>
+
+            <div id="employeeList"></div>
+
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>👨‍💻 Разработчик: @sam_veb_razrabaotclik</p>
+        </footer>
+    </div>
+
+    <!-- Чат панель (общая для всех) -->
+    <div id="chatPanel" class="chat-panel hidden">
+        <div class="chat-header">
+            <span>💬 Внутренний чат</span>
+            <button onclick="toggleChat()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input">
+            <input id="chatInput" placeholder="Введите сообщение..." onkeypress="handleChatKeypress(event)">
+            <button onclick="sendChatMessage()">➤</button>
+        </div>
+    </div>
+
+    <script src="script_new.js"></script>
+
+</body>
+
+</html>
