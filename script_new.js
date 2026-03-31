@@ -273,8 +273,8 @@ let employeeCredentials = JSON.parse(localStorage.getItem("employeeCredentials")
 }
 
 // Telegram настройки
-const TELEGRAM_BOT_TOKEN = "8760355230:AAGo9o-UCk1SFW5hMxIisyrj0w927p41dzQ"
-const TELEGRAM_CHAT_ID = "-1003808756110"
+const TELEGRAM_BOT_TOKEN = ""
+const TELEGRAM_CHAT_ID = ""
 
 function showEmployeeLogin() {
     document.getElementById("loginPage").style.display = "none"
