@@ -99,51 +99,352 @@ window.toggleMobileSidebar = toggleMobileSidebar;
 window.toggleSupervisorStats = toggleSupervisorStats;
 window.showLastTrainingDate = showLastTrainingDate;
 
-// Админ
-var adminName = "Раупов Зайниддин Абдураимович";
-var adminCode = "3020";
+// ==================== ЗАЩИТА ОТ XSS ====================
 
-// Общий логин и пароль
-var loginUsername = "admin";
-var loginPassword = "3020";
+// Экранирование HTML для защиты от XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    var div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+// ==================== API URL
+var API_BASE = '';
+
+// CSRF токен для защиты
+var csrfToken = null;
 
 // Текущий пользователь
 var currentUser = null;
 var isLoggedIn = false;
+var authToken = null;
 
 // ==================== СИСТЕМА ВХОДА ====================
-function checkLogin() {
-    var savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-        try {
-            var user = JSON.parse(savedUser);
-            currentUser = user;
+
+// Состояние админа
+var isAdminLoggedIn = false;
+
+// Инициализация CSRF токена
+function initSecurity() {
+    fetch(API_BASE + '/api/auth/csrf')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            csrfToken = data.csrf_token;
+        })
+        .catch(function(e) {
+            console.error('CSRF init failed:', e);
+        });
+}
+
+// Асинхронная функция входа на сервер
+async function serverLogin(username, password) {
+    try {
+        var response = await fetch(API_BASE + '/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                login: username,
+                password: password
+            })
+        });
+        
+        var data = await response.json();
+        
+        if (data.success) {
+            // Проверяем, требуется ли 2FA
+            if (data.requires_2fa) {
+                // Показываем модальное окно для ввода 2FA кода
+                show2FAModal(data.login);
+                return { success: true, requires_2fa: true, message: 'Введите код 2FA' };
+            }
+            
+            // Обычный вход без 2FA
+            authToken = data.token;
+            csrfToken = data.csrf_token;
+            currentUser = {
+                username: username,
+                role: data.role,
+                name: data.user_name
+            };
             isLoggedIn = true;
-            applyUserRole(user);
-            return true;
-        } catch (e) {}
+            isAdminLoggedIn = data.role === 'admin';
+            
+            // Сохраняем (без пароля!)
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            applyUserRole(currentUser);
+            return { success: true, message: data.message };
+        } else {
+            return { success: false, message: data.error };
+        }
+    } catch (e) {
+        return { success: false, message: 'Ошибка соединения с сервером' };
     }
-    return false;
 }
     
+// Функция для отправки 2FA кода
+async function submit2FA(login, code) {
+    try {
+        var response = await fetch(API_BASE + '/api/auth/verify-2fa', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                login: login,
+                code: code
+            })
+        });
+        
+        var data = await response.json();
+        
+        if (data.success) {
+            authToken = data.token;
+            csrfToken = data.csrf_token;
+            currentUser = {
+                username: login,
+                role: data.role,
+                name: data.user_name
+            };
+            isLoggedIn = true;
+            isAdminLoggedIn = data.role === 'admin';
+            
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            close2FAModal();
+            applyUserRole(currentUser);
+            hideLogin();
+            return { success: true, message: data.message };
+        } else {
+            return { success: false, message: data.error };
+        }
+    } catch (e) {
+        return { success: false, message: 'Ошибка соединения с сервером' };
+    }
+}
+    
+// Показать модальное окно 2FA
+function show2FAModal(login) {
+    var modal = document.getElementById('twoFactorModal');
+    if (!modal) {
+        // Создаём модальное окно если его нет
+        var loginOverlay = document.getElementById('loginOverlay');
+        if (loginOverlay) {
+            loginOverlay.innerHTML += `
+                <div id="twoFactorModal" class="modal" style="display:flex; align-items:center; justify-content:center;">
+                    <div class="modal-content" style="max-width:350px; text-align:center;">
+                        <h2 style="color:var(--text-primary); margin-bottom:15px;">🔐 Двухфакторная авторизация</h2>
+                        <p style="color:var(--text-secondary); margin-bottom:20px;">Введите код из приложения Google Authenticator</p>
+                        <input type="text" id="twoFactorCode" placeholder="000000" maxlength="6" 
+                            style="width:100%; padding:12px; font-size:18px; text-align:center; 
+                            letter-spacing:8px; border:2px solid var(--border-color); 
+                            border-radius:8px; background:var(--bg-input); color:var(--text-primary);">
+                        <div style="margin-top:20px; display:flex; gap:10px;">
+                            <button onclick="submit2FACode()" style="flex:1; padding:12px; 
+                                background:linear-gradient(135deg, #00d9ff, #00ff88); border:none; 
+                                border-radius:8px; cursor:pointer; font-weight:bold;">Подтвердить</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            modal = document.getElementById('twoFactorModal');
+        }
+    }
+    
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('twoFactorCode').value = '';
+        document.getElementById('twoFactorCode').focus();
+        window.pending2FALogin = login;
+    }
+}
+
+function close2FAModal() {
+    var modal = document.getElementById('twoFactorModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    window.pending2FALogin = null;
+}
+
+function submit2FACode() {
+    var code = document.getElementById('twoFactorCode').value.trim();
+    if (!code) {
+        alert('Введите код!');
+        return;
+    }
+    
+    var login = window.pending2FALogin;
+    if (!login) {
+        alert('Ошибка: сессия истекла');
+        return;
+    }
+    
+    submit2FA(login, code).then(function(result) {
+        if (result.success) {
+            showNotification('✅ ' + result.message);
+        } else {
+            alert('❌ ' + result.message);
+        }
+    });
+}
+        
+// Делаем функции глобальными
+window.submit2FACode = submit2FACode;
+window.close2FAModal = close2FAModal;
+    
+// Показать QR код для 2FA
+async function show2FAQrCode() {
+    var login = prompt('Введите ваш логин для получения QR кода:');
+    if (!login) return;
+    
+    try {
+        var response = await fetch(API_BASE + '/api/auth/2fa-qr/' + login, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        var data = await response.json();
+        
+        if (data.qr_uri) {
+            // Создаём модальное окно с QR кодом
+            var qrModal = document.createElement('div');
+            qrModal.id = 'qrCodeModal';
+            qrModal.style.cssText = 'display:flex; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;';
+            qrModal.innerHTML = `
+                <div style="background:white; padding:30px; border-radius:20px; text-align:center; max-width:400px; margin:20px;">
+                    <h2 style="color:#1e293b; margin-bottom:15px;">🔐 Настройка 2FA</h2>
+                    <p style="color:#64748b; margin-bottom:20px;">Отсканируйте QR код в приложении Google Authenticator</p>
+                    <div id="qrcode-container" style="margin:20px auto;"></div>
+                    <p style="color:#64748b; font-size:12px; margin-bottom:10px;">Или введите вручную:</p>
+                    <input type="text" value="${data.secret}" readonly 
+                        style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:11px; text-align:center; color:#64748b;" 
+                        onclick="this.select()">
+                    <div style="margin-top:20px;">
+                        <button onclick="document.getElementById('qrCodeModal').remove()" 
+                            style="padding:12px 30px; background:linear-gradient(135deg, #667eea, #764ba2); 
+                            color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">Закрыть</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(qrModal);
+            
+            // Генерируем QR код
+            if (typeof QRCode !== 'undefined') {
+                var container = document.getElementById('qrcode-container');
+                container.innerHTML = '';
+                new QRCode(container, {
+                    text: data.qr_uri,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            } else {
+                // Если QRCode не загружен, показываем ссылку
+                document.getElementById('qrcode-container').innerHTML = 
+                    '<a href="' + data.qr_uri + '" target="_blank" style="color:#667eea; font-weight:600;">Открыть ссылку</a>';
+                
+                // Загружаем библиотеку QRCode
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+                script.onload = function() {
+                    var container = document.getElementById('qrcode-container');
+                    container.innerHTML = '';
+                    new QRCode(container, {
+                        text: data.qr_uri,
+                        width: 200,
+                        height: 200
+                    });
+                };
+                document.head.appendChild(script);
+            }
+        } else {
+            alert('Пользователь не найден: ' + login);
+        }
+    } catch (e) {
+        alert('Ошибка получения QR кода: ' + e.message);
+    }
+}
+    
+window.show2FAQrCode = show2FAQrCode;
+    
+// Асинхронный выход
+async function serverLogout() {
+    try {
+        await fetch(API_BASE + '/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'X-Session-Token': authToken || '',
+                'X-CSRF-Token': csrfToken || ''
+            }
+        });
+    } catch (e) {}
+    
+    logout();
+}
+
+function checkLogin() {
+    // Проверяем сохранённую сессию
+    var savedToken = localStorage.getItem('authToken');
+    var savedUser = localStorage.getItem('currentUser');
+    
+    if (savedToken && savedUser) {
+        // Проверяем на сервере
+        fetch(API_BASE + '/api/auth/check', {
+            headers: { 'X-Session-Token': savedToken }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.authenticated) {
+                authToken = savedToken;
+                currentUser = JSON.parse(savedUser);
+                isLoggedIn = true;
+                isAdminLoggedIn = data.role === 'admin';
+                applyUserRole(currentUser);
+            } else {
+                // Сессия истекла
+                logout();
+            }
+        })
+        .catch(function() {
+            // Сервер недоступен - используем локальные данные
+            try {
+                var user = JSON.parse(savedUser);
+                currentUser = user;
+                isLoggedIn = true;
+                applyUserRole(user);
+            } catch (e) {}
+        });
+    }
+}
+
 function applyUserRole(user) {
-    // После входа через логин - обычный режим (не админ)
-    isAdminLoggedIn = false;
+    isAdminLoggedIn = user && user.role === 'admin';
     currentSupervisor = 'all';
     updateAdminPanel();
     updateCurrentUserDisplay();
     applyFilters();
 }
-
+    
 function login(username, password) {
-    if (username.toLowerCase() === loginUsername.toLowerCase() && password === loginPassword) {
-        currentUser = { username: loginUsername, role: 'admin', name: 'Администратор' };
-        isLoggedIn = true;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        applyUserRole(currentUser);
-        return true;
-    }
-    return false;
+    // Теперь используем серверную аутентификацию
+    serverLogin(username, password).then(function(result) {
+        if (result.success) {
+            hideLogin();
+            showNotification('✅ ' + result.message);
+        } else {
+            alert('❌ ' + result.message);
+        }
+    });
 }
     
 function logout() {
@@ -151,7 +452,9 @@ function logout() {
     isLoggedIn = false;
     isAdminLoggedIn = false;
     currentSupervisor = null;
+    authToken = null;
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
     updateAdminPanel();
     updateCurrentUserDisplay();
     applyFilters();
@@ -165,10 +468,7 @@ function hideLogin() {
     document.getElementById('loginOverlay').classList.add('hidden');
 }
 
-// Состояние админа
-var isAdminLoggedIn = false;
-
-// Вход в админ-панель
+// Вход в админ-панель (использует серверную аутентификацию)
 function openAdminLogin() {
     document.getElementById('adminLoginModal').classList.add('active');
     document.getElementById('adminCodeInput').value = '';
@@ -179,26 +479,30 @@ function closeAdminLogin() {
     document.getElementById('adminLoginModal').classList.remove('active');
 }
 
-// Обработка входа админа
+// Обработка входа админа - через сервер!
 document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
     e.preventDefault();
     var code = document.getElementById('adminCodeInput').value;
-    if (code === adminCode) {
-        isAdminLoggedIn = true;
-        currentSupervisor = 'all'; // Админ видит всех
-        closeAdminLogin();
-        updateAdminPanel();
-        updateCurrentUserDisplay();
-        applyFilters();
-        showNotification('✅ Добро пожаловать, админ!');
-    } else {
-        alert('❌ Неверный код!');
-    }
+    
+    // Используем серверную аутентификацию для админа
+    serverLogin('zayniddin', code).then(function(result) {
+        if (result.success) {
+            isAdminLoggedIn = true;
+            currentSupervisor = 'all';
+            closeAdminLogin();
+            updateAdminPanel();
+            updateCurrentUserDisplay();
+            applyFilters();
+            showNotification('✅ Добро пожаловать, админ!');
+        } else {
+            alert('❌ ' + result.message);
+        }
+    });
 });
 
 // Выход из админ-панели
 function logoutAdmin() {
-    logout(); // Полный выход из системы
+    serverLogout();
     showLogin();
     showNotification('Вы вышли из системы');
 }
@@ -414,11 +718,11 @@ function renderSupervisorStatsList() {
         var isCurrentUser = currentSupervisor === id;
         
         // Формируем дату последнего обучения
-        var lastDateDisplay = item.lastDate ? item.lastDate : '—';
+        var lastDateDisplay = item.lastDate ? escapeHtml(item.lastDate) : '—';
         
         html += '<div class="supervisor-stat-item' + (isCurrentUser ? ' active' : '') + '">';
-        html += '<div class="supervisor-stat-name" onclick="showLastTrainingDate(\'' + id + '\')" title="Нажмите, чтобы увидеть дату последнего обучения">' + item.name + '</div>';
-        html += '<div class="supervisor-last-date" id="lastDate-' + id + '">Посл. обучение: ' + lastDateDisplay + '</div>';
+        html += '<div class="supervisor-stat-name" onclick="showLastTrainingDate(\'' + escapeHtml(id) + '\')" title="Нажмите, чтобы увидеть дату последнего обучения">' + escapeHtml(item.name) + '</div>';
+        html += '<div class="supervisor-last-date" id="lastDate-' + escapeHtml(id) + '">Посл. обучение: ' + lastDateDisplay + '</div>';
         html += '<div class="supervisor-stat-bar">';
         html += '<div class="supervisor-stat-fill" style="width:' + percent + '%"></div>';
         html += '</div>';
@@ -506,9 +810,9 @@ function viewSignature(employeeId) {
     var w = window.open("", "Подпись", "width=400,height=250");
     w.document.write('<html><head><title>Подпись сотрудника</title></head><body style="font-family:Segoe UI;padding:20px;text-align:center;">');
     w.document.write('<h3>Подпись сотрудника</h3>');
-    w.document.write('<p><strong>' + employee.name + '</strong></p>');
+    w.document.write('<p><strong>' + escapeHtml(employee.name) + '</strong></p>');
     w.document.write('<img src="' + employee.signatureImage + '" style="max-width:100%;border:1px solid #ccc;padding:10px;">');
-    w.document.write('<p style="color:#666;margin-top:15px;">Дата: ' + employee.signedAt + '</p>');
+    w.document.write('<p style="color:#666;margin-top:15px;">Дата: ' + escapeHtml(employee.signedAt) + '</p>');
     w.document.write('</body></html>');
     w.document.close();
 }
@@ -702,15 +1006,15 @@ function showThemeInfo(employeeId) {
         <div style="text-align:center; padding: 20px 0;">
             <div style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                 <div style="font-size: 3rem; margin-bottom: 10px;">📚</div>
-                <h3 style="color: #4338ca; margin-bottom: 10px;">${employee.theme}</h3>
+                <h3 style="color: #4338ca; margin-bottom: 10px;">${escapeHtml(employee.theme)}</h3>
             </div>
             
             <div style="text-align:left; background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                <p style="margin-bottom: 10px;"><strong>👤 Сотрудник:</strong> ${employee.name}</p>
-                <p style="margin-bottom: 10px;"><strong>📅 Дата:</strong> ${employee.date}</p>
-                <p style="margin-bottom: 10px;"><strong>⏰ Время:</strong> ${employee.time}</p>
-                <p style="margin-bottom: 10px;"><strong>👨‍🏫 Обучивший:</strong> ${employee.trainer}</p>
-                ${employee.signed ? '<p style="color: #10b981;"><strong>✅ Подписано:</strong> ' + employee.signedAt + '</p>' : '<p style="color: #f59e0b;">⏳ Ещё не подписано</p>'}
+                <p style="margin-bottom: 10px;"><strong>👤 Сотрудник:</strong> ${escapeHtml(employee.name)}</p>
+                <p style="margin-bottom: 10px;"><strong>📅 Дата:</strong> ${escapeHtml(employee.date)}</p>
+                <p style="margin-bottom: 10px;"><strong>⏰ Время:</strong> ${escapeHtml(employee.time)}</p>
+                <p style="margin-bottom: 10px;"><strong>👨‍🏫 Обучивший:</strong> ${escapeHtml(employee.trainer)}</p>
+                ${employee.signed ? '<p style="color: #10b981;"><strong>✅ Подписано:</strong> ' + escapeHtml(employee.signedAt) + '</p>' : '<p style="color: #f59e0b;">⏳ Ещё не подписано</p>'}
             </div>
         </div>
     `;
@@ -1170,9 +1474,9 @@ function renderTable(data) {
         if (item.signed && item.signedAt) {
             if (item.signatureImage) {
                 // Показываем изображение подписи
-                signedHtml = '<img src="' + item.signatureImage + '" class="signature-preview" title="Подписано: ' + item.signedAt + '" onclick="viewSignature(\'' + item.id + '\')">';
+                signedHtml = '<img src="' + item.signatureImage + '" class="signature-preview" title="Подписано: ' + escapeHtml(item.signedAt) + '" onclick="viewSignature(\'' + item.id + '\')">';
             } else {
-                signedHtml = '<span class="signed-badge" title="Подписано: ' + item.signedAt + '">✅ Подписано</span>';
+                signedHtml = '<span class="signed-badge" title="Подписано: ' + escapeHtml(item.signedAt) + '">✅ Подписано</span>';
             }
         } else {
             signedHtml = '<button class="sign-btn" onclick="openSignModal(' + item.id + ')" title="Подписать">✍️ Подписать</button>';
@@ -1180,12 +1484,12 @@ function renderTable(data) {
         
         html += '<tr>';
         html += '<td class="row-number">' + item.id + '</td>';
-        html += '<td><strong>' + item.name + '</strong></td>';
-        html += '<td><button class="theme-btn" onclick="showThemeInfo(' + item.id + ')" title="Посмотреть тему обучения">📖 ' + item.theme + '</button></td>';
-        html += '<td class="date-cell">' + item.date + '</td>';
-        html += '<td class="time-cell">' + item.time + '</td>';
+        html += '<td><strong>' + escapeHtml(item.name) + '</strong></td>';
+        html += '<td><button class="theme-btn" onclick="showThemeInfo(' + item.id + ')" title="Посмотреть тему обучения">📖 ' + escapeHtml(item.theme) + '</button></td>';
+        html += '<td class="date-cell">' + escapeHtml(item.date) + '</td>';
+        html += '<td class="time-cell">' + escapeHtml(item.time) + '</td>';
         html += '<td class="signature-cell">' + signedHtml + '</td>';
-        html += '<td><span class="trainer-badge">' + item.trainer + '</span></td>';
+        html += '<td><span class="trainer-badge">' + escapeHtml(item.trainer) + '</span></td>';
         html += '<td class="actions-cell">';
         
         if (canEditThis) {
@@ -1385,62 +1689,65 @@ document.addEventListener('DOMContentLoaded', function() {
             var password = document.getElementById('loginPassword').value;
             var errorEl = document.getElementById('loginError');
             
-            if (login(username, password)) {
-                hideLogin();
-                
-                // Инициализируем Firebase
-                var firebaseInit = initFirebaseCheck();
-                if (firebaseInit) {
-                    useFirebase = true;
-                    // Загружаем данные из Firebase
-                    loadDataFromFirebase(function(fbData) {
-                        if (fbData && fbData.length > 0) {
-                            trainingData = fbData;
-                        }
-                        // Загружаем тренеров из Firebase
-                        loadTrainersFromFirebase(function(fbTrainers) {
-                            if (fbTrainers && Array.isArray(fbTrainers)) {
-                                trainers = fbTrainers;
+            // Используем серверную аутентификацию
+            serverLogin(username, password).then(function(result) {
+                if (result.success) {
+                    hideLogin();
+                    
+                    // Инициализируем Firebase
+                    var firebaseInit = initFirebaseCheck();
+                    if (firebaseInit) {
+                        useFirebase = true;
+                        // Загружаем данные из Firebase
+                        loadDataFromFirebase(function(fbData) {
+                            if (fbData && fbData.length > 0) {
+                                trainingData = fbData;
                             }
-                            // Объединяем с дефолтными тренерами
-                            defaultTrainers.forEach(function(t) {
-                                if (trainers.indexOf(t) === -1) trainers.push(t);
+                            // Загружаем тренеров из Firebase
+                            loadTrainersFromFirebase(function(fbTrainers) {
+                                if (fbTrainers && Array.isArray(fbTrainers)) {
+                                    trainers = fbTrainers;
+                                }
+                                // Объединяем с дефолтными тренерами
+                                defaultTrainers.forEach(function(t) {
+                                    if (trainers.indexOf(t) === -1) trainers.push(t);
+                                });
+                                
+                                populateTrainerSelect('trainerSelect');
+                                applyUserRole(currentUser);
+                                applyFilters();
+                                updateSidebarStats();
+                                renderSupervisorStatsList();
                             });
-                            
-                            populateTrainerSelect('trainerSelect');
-                            applyUserRole(currentUser);
-                            applyFilters();
-                            updateSidebarStats();
-                            renderSupervisorStatsList();
                         });
-                    });
+                    } else {
+                        // Если Firebase не работает - грузим из localStorage
+                        var localData = localStorage.getItem('trainingData');
+                        var localTrainers = localStorage.getItem('trainers');
+                        
+                        if (localData) {
+                            try { trainingData = JSON.parse(localData); } catch (e) {}
+                        }
+                        if (localTrainers) {
+                            try { 
+                                trainers = JSON.parse(localTrainers);
+                                defaultTrainers.forEach(function(t) {
+                                    if (trainers.indexOf(t) === -1) trainers.push(t);
+                                });
+                            } catch (e) {}
+                        }
+                        
+                        populateTrainerSelect('trainerSelect');
+                        applyUserRole(currentUser);
+                        applyFilters();
+                        updateSidebarStats();
+                        renderSupervisorStatsList();
+                    }
                 } else {
-                    // Если Firebase не работает - грузим из localStorage
-                    var localData = localStorage.getItem('trainingData');
-                    var localTrainers = localStorage.getItem('trainers');
-                    
-                    if (localData) {
-                        try { trainingData = JSON.parse(localData); } catch (e) {}
-                    }
-                    if (localTrainers) {
-                        try { 
-                            trainers = JSON.parse(localTrainers);
-                            defaultTrainers.forEach(function(t) {
-                                if (trainers.indexOf(t) === -1) trainers.push(t);
-                            });
-                        } catch (e) {}
-                    }
-                    
-                    populateTrainerSelect('trainerSelect');
-                    applyUserRole(currentUser);
-                    applyFilters();
-                    updateSidebarStats();
-                    renderSupervisorStatsList();
+                    errorEl.textContent = result.message;
+                    errorEl.classList.add('show');
                 }
-            } else {
-                errorEl.textContent = 'Неверный логин или пароль';
-                errorEl.classList.add('show');
-            }
+            });
         });
     }
     
@@ -1551,25 +1858,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Форма входа админа
-    var adminLoginForm = document.getElementById('adminLoginForm');
-    if (adminLoginForm) {
-        adminLoginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var code = document.getElementById('adminCodeInput').value;
-            if (code === adminCode) {
-                isAdminLoggedIn = true;
-                currentSupervisor = 'all';
-                closeAdminLogin();
-                updateAdminPanel();
-                updateCurrentUserDisplay();
-                applyFilters();
-                showNotification('✅ Добро пожаловать, админ!');
-            } else {
-                alert('❌ Неверный код!');
-            }
-        });
-    }
+    // adminLoginForm уже обрабатывается в serverLogin
 });
 
 // Запуск после загрузки DOM

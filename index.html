@@ -18,14 +18,15 @@
             </div>
             <form id="loginForm" class="login-form">
                 <div class="form-group">
-                    <label>Логин</label>
-                    <input type="text" id="loginUsername" required placeholder="Введите логин" autocomplete="off">
+                    <label>Логин или номер телефона</label>
+                    <input type="text" id="loginUsername" required placeholder="Логин: zayniddin или +998901234567" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label>Пароль</label>
                     <input type="password" id="loginPassword" required placeholder="Введите пароль" autocomplete="off">
                 </div>
                 <button type="submit" class="login-btn">Войти в систему</button>
+                <button type="button" class="qr-btn" onclick="show2FAQrCode()">🔐 Настроить 2FA</button>
             </form>
             <p class="login-error" id="loginError"></p>
         </div>
